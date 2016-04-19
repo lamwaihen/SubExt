@@ -3,6 +3,18 @@
   "version": 1,
   "targets": {
     "UAP,Version=v10.0": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -232,6 +244,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -1569,6 +1582,22 @@
       }
     },
     "UAP,Version=v10.0/win10-arm": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-arm/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-arm/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -1841,6 +1870,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -3225,6 +3255,22 @@
       }
     },
     "UAP,Version=v10.0/win10-arm-aot": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-arm/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-arm/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -3483,6 +3529,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -4853,6 +4900,22 @@
       }
     },
     "UAP,Version=v10.0/win10-x64": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-x64/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-x64/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -5130,6 +5193,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -6514,6 +6578,22 @@
       }
     },
     "UAP,Version=v10.0/win10-x64-aot": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-x64/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-x64/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -6772,6 +6852,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -8142,6 +8223,22 @@
       }
     },
     "UAP,Version=v10.0/win10-x86": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-x86/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-x86/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -8419,6 +8516,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -9803,6 +9901,22 @@
       }
     },
     "UAP,Version=v10.0/win10-x86-aot": {
+      "LumiaImagingSDK.UWP/3.0.593": {
+        "compile": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "runtime": {
+          "lib/uap10.0/Lumia.Imaging.Managed.dll": {},
+          "lib/uap10.0/Lumia.Imaging.winmd": {},
+          "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd": {}
+        },
+        "native": {
+          "runtimes/win10-x86/native/Lumia.Imaging.dll": {},
+          "runtimes/win10-x86/native/Lumia.InteropServices.WindowsRuntime.dll": {}
+        }
+      },
       "Microsoft.ApplicationInsights/1.0.0": {
         "compile": {
           "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll": {}
@@ -10061,6 +10175,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "MMaitre.MediaCaptureReader/2.1.6": {},
       "System.AppContext/4.0.0": {
         "dependencies": {
           "System.Collections": "[4.0.0, )",
@@ -11432,6 +11547,32 @@
     }
   },
   "libraries": {
+    "LumiaImagingSDK.UWP/3.0.593": {
+      "sha512": "qzdxt9YjK6MMPTW/vuuKhCS0tPjhRgtqUUZjL5B6bE0zvRRaPVKTjY60d2Dn4MF5nhtOKL9KiUHTdJ53DCx00A==",
+      "type": "Package",
+      "files": [
+        "[Content_Types].xml",
+        "_rels/.rels",
+        "build/native/LumiaImagingSDK.UWP.targets",
+        "lib/uap10.0/Lumia.Imaging.Managed.dll",
+        "lib/uap10.0/Lumia.Imaging.Managed.XML",
+        "lib/uap10.0/Lumia.Imaging.winmd",
+        "lib/uap10.0/Lumia.Imaging.xml",
+        "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.winmd",
+        "lib/uap10.0/Lumia.InteropServices.WindowsRuntime.xml",
+        "license.md",
+        "LumiaImagingSDK.UWP.nuspec",
+        "package/services/metadata/core-properties/9d465ab380db45f3b8112105dd7eeeb4.psmdcp",
+        "readme.txt",
+        "REDIST.TXT",
+        "runtimes/win10-arm/native/Lumia.Imaging.dll",
+        "runtimes/win10-arm/native/Lumia.InteropServices.WindowsRuntime.dll",
+        "runtimes/win10-x64/native/Lumia.Imaging.dll",
+        "runtimes/win10-x64/native/Lumia.InteropServices.WindowsRuntime.dll",
+        "runtimes/win10-x86/native/Lumia.Imaging.dll",
+        "runtimes/win10-x86/native/Lumia.InteropServices.WindowsRuntime.dll"
+      ]
+    },
     "Microsoft.ApplicationInsights/1.0.0": {
       "sha512": "HZ47/thX57SOuIivSvIbsR6L9CCb/Yt3IyB2i4KHmmNlf3DO+lqFwWIKDdbDNWKX+qh0Rg20/JSMPK0dwUsYYw==",
       "type": "Package",
@@ -12133,6 +12274,45 @@
         "ref/net46/Microsoft.Win32.Primitives.dll",
         "ref/xamarinios10/_._",
         "ref/xamarinmac20/_._"
+      ]
+    },
+    "MMaitre.MediaCaptureReader/2.1.6": {
+      "sha512": "dwaiKGz7XVay/IgLm/IOXIRlEwV26IQETL0OSaDVX/NGAk1Xm7kKLVpePwpdkml9z4FY7rpr0v99EGjf+VqMxg==",
+      "type": "Package",
+      "files": [
+        "[Content_Types].xml",
+        "_rels/.rels",
+        "build/native/MediaCaptureReader.natvis",
+        "build/native/MMaitre.MediaCaptureReader.targets",
+        "build/native/Windows/Arm/MediaCaptureReader.Windows.dll",
+        "build/native/Windows/Arm/MediaCaptureReader.winmd",
+        "build/native/Windows/Arm/MediaCaptureReader.xml",
+        "build/native/Windows/Arm/MediaCaptureReaderExtensions.Windows.dll",
+        "build/native/Windows/Arm/MediaCaptureReaderExtensions.Windows.XML",
+        "build/native/Windows/x64/MediaCaptureReader.Windows.dll",
+        "build/native/Windows/x64/MediaCaptureReader.winmd",
+        "build/native/Windows/x64/MediaCaptureReader.xml",
+        "build/native/Windows/x64/MediaCaptureReaderExtensions.Windows.dll",
+        "build/native/Windows/x64/MediaCaptureReaderExtensions.Windows.XML",
+        "build/native/Windows/x86/MediaCaptureReader.Windows.dll",
+        "build/native/Windows/x86/MediaCaptureReader.winmd",
+        "build/native/Windows/x86/MediaCaptureReader.xml",
+        "build/native/Windows/x86/MediaCaptureReaderExtensions.Windows.dll",
+        "build/native/Windows/x86/MediaCaptureReaderExtensions.Windows.XML",
+        "build/native/WindowsPhone/Arm/MediaCaptureReader.WindowsPhone.dll",
+        "build/native/WindowsPhone/Arm/MediaCaptureReader.winmd",
+        "build/native/WindowsPhone/Arm/MediaCaptureReader.xml",
+        "build/native/WindowsPhone/Arm/MediaCaptureReaderExtensions.WindowsPhone.dll",
+        "build/native/WindowsPhone/Arm/MediaCaptureReaderExtensions.WindowsPhone.XML",
+        "build/native/WindowsPhone/x86/MediaCaptureReader.WindowsPhone.dll",
+        "build/native/WindowsPhone/x86/MediaCaptureReader.winmd",
+        "build/native/WindowsPhone/x86/MediaCaptureReader.xml",
+        "build/native/WindowsPhone/x86/MediaCaptureReaderExtensions.WindowsPhone.dll",
+        "build/native/WindowsPhone/x86/MediaCaptureReaderExtensions.WindowsPhone.XML",
+        "build/win81/MMaitre.MediaCaptureReader.targets",
+        "build/wpa81/MMaitre.MediaCaptureReader.targets",
+        "MMaitre.MediaCaptureReader.nuspec",
+        "package/services/metadata/core-properties/d5b91e5a7c3340a18f37e06bfe715f57.psmdcp"
       ]
     },
     "System.AppContext/4.0.0": {
@@ -14833,10 +15013,12 @@
   },
   "projectFileDependencyGroups": {
     "": [
+      "LumiaImagingSDK.UWP >= 3.0.593",
       "Microsoft.ApplicationInsights >= 1.0.0",
       "Microsoft.ApplicationInsights.PersistenceChannel >= 1.0.0",
       "Microsoft.ApplicationInsights.WindowsApps >= 1.0.0",
-      "Microsoft.NETCore.UniversalWindowsPlatform >= 5.0.0"
+      "Microsoft.NETCore.UniversalWindowsPlatform >= 5.0.0",
+      "MMaitre.MediaCaptureReader >= 2.1.6"
     ],
     "UAP,Version=v10.0": []
   }

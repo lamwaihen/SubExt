@@ -8,6 +8,27 @@
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-
+        <Grid x:Name="gridMain" Visibility="Visible">
+            <Button x:Name="buttonOpenVideo" Content="Open Video" Click="buttonOpenVideo_Click"/>
+        </Grid>
+        <Grid x:Name="gridRegionSelect" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid x:Name="gridRegionRect" Grid.Column="0">
+                <Button Content="Hello"/>
+            </Grid>
+            <Grid x:Name="gridRegionPreview" Grid.Column="1">
+                <StackPanel>
+                    <SwapChainPanel x:Name="swapChainPanelTarget" Width="400" Height="400"/>
+                    <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>
+                </StackPanel>
+            </Grid>
+            <Grid x:Name="gridRegionControls" Grid.Column="2">
+                <Button Content="Hello"/>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>
