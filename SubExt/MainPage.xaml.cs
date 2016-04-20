@@ -94,13 +94,12 @@ namespace SubExt
         private async void SeekVideo(TimeSpan position)
         {
             m_mediaReader.Seek(position);
+            // Get the specific frame and show on screen
             using (var mediaResult = await m_mediaReader.VideoStream.ReadAsync())
             {
-                var inputSample = (MediaSample2D)mediaResult.Sample;
+                MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
 
-                using (var outputSample = new MediaSample2D(MediaSample2DFormat.Nv12, inputSample.Width, inputSample.Height))
-                using (var inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
-                using (var outputBuffer = outputSample.LockBuffer(BufferAccessMode.Write))
+                using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
                 {
                     // Wrap MediaBuffer2D in Bitmap
                     var inputBitmap = new Bitmap(
@@ -109,15 +108,9 @@ namespace SubExt
                         new uint[] { inputBuffer.Planes[0].Pitch, inputBuffer.Planes[1].Pitch },
                         new IBuffer[] { inputBuffer.Planes[0].Buffer, inputBuffer.Planes[1].Buffer }
                         );
-                    var outputBitmap = new Bitmap(
-                        new Size(inputSample.Width, inputSample.Height),
-                        ColorMode.Yuv420Sp,
-                        new uint[] { outputBuffer.Planes[0].Pitch, outputBuffer.Planes[1].Pitch },
-                        new IBuffer[] { outputBuffer.Planes[0].Buffer, outputBuffer.Planes[1].Buffer }
-                        );
 
                     // Apply effect
-                    var _grayscaleEffect = new GrayscaleEffect();
+                    GrayscaleEffect _grayscaleEffect = new GrayscaleEffect();
                     ((IImageConsumer)_grayscaleEffect).Source = new Lumia.Imaging.BitmapImageSource(inputBitmap);
                     m_renderer = new SwapChainPanelRenderer(_grayscaleEffect, swapChainPanelTarget);
                     await m_renderer.RenderAsync();
