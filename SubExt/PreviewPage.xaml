@@ -1,0 +1,19 @@
+﻿<Page
+    x:Class="SubExt.PreviewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SubExt"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" SizeChanged="Page_SizeChanged">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <StackPanel>
+            <Canvas x:Name="canvasPreview">
+                <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1"/>
+                <SwapChainPanel x:Name="swapChainPanelTarget" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
+            </Canvas>
+            <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>
+        </StackPanel>
+    </Grid>
+</Page>
