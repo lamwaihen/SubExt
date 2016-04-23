@@ -1,5 +1,6 @@
 ﻿using Lumia.Imaging;
 using Lumia.Imaging.Adjustments;
+using Lumia.Imaging.Artistic;
 using MediaCaptureReader;
 using System;
 using Windows.Foundation;
@@ -22,10 +23,8 @@ namespace SubExt
     {
         private Payload p;
         private Point m_ptRegionStart;
-        private Point m_ptRegionMoveStart;
         private Rect m_rectMedia;
 
-        private GrayscaleEffect m_grayscaleEffect;
         private SwapChainPanelRenderer m_renderer;
         private MediaReader m_mediaReader;
         private bool m_isRendering;
@@ -42,11 +41,31 @@ namespace SubExt
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
+            p.Region = new Rect(Canvas.GetLeft(rectRegion), Canvas.GetTop(rectRegion), rectRegion.ActualWidth, rectRegion.ActualHeight);
         }
-        
+
+        private void buttonProceed_Click(object sender, RoutedEventArgs e)
+        {
+            Frame.Navigate(typeof(SubtitlePage), p);
+        }
+        private void effects_Changed(object sender, RoutedEventArgs e)
+        {
+            SeekVideo(TimeSpan.FromMilliseconds(sldPreview.Value));
+
+            CheckBox checkBox = sender as CheckBox;
+            if (checkBox == checkBoxStamp)
+            {
+                sliderStampSmoothness.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                sliderStampThreshold.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
         private void sldPreview_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             SeekVideo(TimeSpan.FromMilliseconds(e.NewValue));
+        }
+        private void sliderStamp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            SeekVideo(TimeSpan.FromMilliseconds(sldPreview.Value));
         }
         private void swapChainPanelTarget_Loaded(object sender, RoutedEventArgs e)
         {
@@ -109,8 +128,8 @@ namespace SubExt
 
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            canvasPreview.Height = swapChainPanelTarget.Height = this.ActualHeight - sldPreview.ActualHeight;
-            canvasPreview.Width = swapChainPanelTarget.Width = this.ActualWidth;
+            canvasPreview.Height = swapChainPanelTarget.Height = (canvasPreview.Parent as StackPanel).ActualHeight - sldPreview.ActualHeight;
+            canvasPreview.Width = swapChainPanelTarget.Width = (canvasPreview.Parent as StackPanel).ActualWidth;
         }
 
         private async void CalculateMediaRect()
@@ -136,6 +155,9 @@ namespace SubExt
         }
         private async void SeekVideo(TimeSpan position)
         {
+            if (m_mediaReader == null)
+                return;
+
             if (!m_isRendering)
             {
                 m_isRendering = true;
@@ -156,11 +178,29 @@ namespace SubExt
                             );
 
                         // Apply effect
-                        GrayscaleEffect _grayscaleEffect = new GrayscaleEffect();
-                        ((IImageConsumer)_grayscaleEffect).Source = new Lumia.Imaging.BitmapImageSource(inputBitmap);
-                        m_renderer = new SwapChainPanelRenderer(_grayscaleEffect, swapChainPanelTarget);
-                        await m_renderer.RenderAsync();
-                        m_isRendering = false;
+                        using (ContrastEffect contrastEffect = new ContrastEffect())
+                        using (GrayscaleNegativeEffect grayscaleNegativeEffect = new GrayscaleNegativeEffect())
+                            using (StampEffect stampEffect = new StampEffect((int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
+                        {
+                            EffectList appliedEffects = new EffectList();
+                            if (checkBoxContrast.IsChecked == true)
+                                appliedEffects.Add(contrastEffect);
+                            if (checkBoxGrayscaleNegative.IsChecked == true)
+                                appliedEffects.Add(grayscaleNegativeEffect);
+                            if (checkBoxStamp.IsChecked == true)
+                                appliedEffects.Add(stampEffect);
+
+                            // Apply image to the first effect
+                            if (appliedEffects.Count > 0)
+                                ((IImageConsumer)appliedEffects[0]).Source = new BitmapImageSource(inputBitmap);
+                            else
+                                appliedEffects.Source = new BitmapImageSource(inputBitmap);
+
+                            m_renderer = new SwapChainPanelRenderer(appliedEffects, swapChainPanelTarget);
+
+                            await m_renderer.RenderAsync();
+                            m_isRendering = false;
+                        }
                     }
                 }
             }

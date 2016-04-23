@@ -8,12 +8,30 @@
     mc:Ignorable="d" SizeChanged="Page_SizeChanged">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <StackPanel>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="384"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
             <Canvas x:Name="canvasPreview">
                 <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1"/>
                 <SwapChainPanel x:Name="swapChainPanelTarget" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
             </Canvas>
             <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>
         </StackPanel>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
+                <CheckBox x:Name="checkBoxGrayscaleNegative" Content="Grayscale Negative" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
+                <CheckBox x:Name="checkBoxContrast" Content="Contrast" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
+                <CheckBox x:Name="checkBoxStamp" Content="Stamp" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
+                <Slider x:Name="sliderStampSmoothness" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="6" TickPlacement="TopLeft" TickFrequency="1"/>
+                <Slider x:Name="sliderStampThreshold" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="1" StepFrequency="0.01" SmallChange="0.1" TickFrequency="0.05" Value="0.45" TickPlacement="TopLeft"/>
+            </StackPanel>
+            <Button x:Name="buttonProceed" Grid.Row="1" Content="Proceed" Margin="8" HorizontalAlignment="Center" Click="buttonProceed_Click"/>
+        </Grid>
     </Grid>
 </Page>
