@@ -1,16 +1,25 @@
 ﻿using Lumia.Imaging;
 using Lumia.Imaging.Adjustments;
 using Lumia.Imaging.Artistic;
+using Lumia.Imaging.Transforms;
 using MediaCaptureReader;
 using System;
+using System.Collections.Generic;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.UI;
 using Windows.UI.Input;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.IO;
+using System.Threading.Tasks;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -44,9 +53,164 @@ namespace SubExt
             p.Region = new Rect(Canvas.GetLeft(rectRegion), Canvas.GetTop(rectRegion), rectRegion.ActualWidth, rectRegion.ActualHeight);
         }
 
-        private void buttonProceed_Click(object sender, RoutedEventArgs e)
+        private async void buttonProceed_Click(object sender, RoutedEventArgs e)
         {
+             // Start from beginning
+            m_mediaReader.Seek(TimeSpan.FromMilliseconds(sldPreview.Value));
+            for (int i = 0; i < 90; i++)
+            {
+                // Read each frame
+                using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
+                {
+                    if (mediaResult.EndOfStream || mediaResult.Error)
+                        break;
+
+                    using (MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample)
+                    {
+                        if (inputSample == null)
+                            continue;
+
+                        using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
+                        {
+                            // Wrap MediaBuffer2D in Bitmap
+                            Bitmap inputBitmap = new Bitmap(
+                            new Size(inputSample.Width, inputSample.Height),
+                            ColorMode.Yuv420Sp,
+                            new uint[] { inputBuffer.Planes[0].Pitch, inputBuffer.Planes[1].Pitch },
+                            new IBuffer[] { inputBuffer.Planes[0].Buffer, inputBuffer.Planes[1].Buffer }
+                            );
+
+                            // Apply effect
+                            using (CropEffect cropEffect = new CropEffect(new BitmapImageSource(inputBitmap), p.Region))
+                            using (ContrastEffect contrastEffect = new ContrastEffect(cropEffect))
+                            using (GrayscaleNegativeEffect grayscaleNegativeEffect = new GrayscaleNegativeEffect(contrastEffect))
+                            using (StampEffect stampEffect = new StampEffect(grayscaleNegativeEffect, (int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
+                            {
+    
+                                WriteableBitmap WB = new WriteableBitmap((int)p.Region.Width, (int)p.Region.Height);
+                                WriteableBitmapRenderer renderer = new WriteableBitmapRenderer(cropEffect, WB);
+                                await renderer.RenderAsync();
+
+                                StorageFile file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(((int)inputSample.Timestamp.TotalMilliseconds).ToString("D6") + ".jpg", CreationCollisionOption.ReplaceExisting);
+                                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                                {
+                                    var propertySet = new Windows.Graphics.Imaging.BitmapPropertySet();
+                                    var qualityValue = new Windows.Graphics.Imaging.BitmapTypedValue(
+                                        0.6, // Maximum quality
+                                        Windows.Foundation.PropertyType.Single
+                                        );
+
+                                    propertySet.Add("ImageQuality", qualityValue);
+                                    BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, propertySet);                                    
+                                    Stream pixelStream = WB.PixelBuffer.AsStream();
+                                    byte[] pixels = new byte[pixelStream.Length];
+                                    await pixelStream.ReadAsync(pixels, 0, pixels.Length);
+
+                                    if (ConvertToBW(pixels, WB.PixelWidth, WB.PixelHeight))
+                                    {
+                                        await file.DeleteAsync(StorageDeleteOption.PermanentDelete);
+                                    }
+                                    else
+                                    {
+                                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
+                                            (uint)WB.PixelWidth, (uint)WB.PixelHeight,
+                                            96.0, 96.0, pixels);
+                                        await encoder.FlushAsync();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Frame.Navigate(typeof(SubtitlePage), p);
+        }
+        private bool ConvertToBW(byte[] pixels, int width, int height)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // First turn all pixels to B/W
+                    pixels[(x + y * width) * 4] = (byte)(pixels[(x + y * width) * 4] >= 128 ? 255 : 0);
+                    pixels[(x + y * width) * 4 + 1] = (byte)(pixels[(x + y * width) * 4 + 1] >= 128 ? 255 : 0);
+                    pixels[(x + y * width) * 4 + 2] = (byte)(pixels[(x + y * width) * 4 + 2] >= 128 ? 255 : 0);
+                }
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    if (y == 0 || y == height - 1 || x == 0 || x == width - 1)
+                    {
+                        FloodFill(pixels, width, height, new Point(x, y), Color.FromArgb(255, 0, 0, 0), Color.FromArgb(255, 255, 255, 255));
+                    }
+                }
+            }
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (pixels[i] != 255)
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool ColorMatch(Color a, Color b)
+        {
+            
+            return a.Equals(b);
+        }
+
+        private static Color GetPixel(byte[] pixels, int width, double x, double y)
+        {
+            byte a, r, g, b;
+            b = pixels[(int)(x + y * width) * 4];
+            g = pixels[(int)(x + y * width) * 4+1];
+            r = pixels[(int)(x + y * width) * 4+2];
+            a = pixels[(int)(x + y * width) * 4+3];
+            return Color.FromArgb(a, r, g, b);
+        }
+
+        private static void SetPixel(byte[] pixels, int width, double x, double y, Color c)
+        {
+            pixels[(int)(x + y * width) * 4] = c.B;
+            pixels[(int)(x + y * width) * 4 + 1] = c.G;
+            pixels[(int)(x + y * width) * 4 + 2] = c.R;
+            pixels[(int)(x + y * width) * 4 + 3] = c.A;
+        }
+
+        static void FloodFill(byte[] pixels, int width, int height, Point pt, Color targetColor, Color replacementColor)
+        {
+            Queue<Point> q = new Queue<Point>();
+            q.Enqueue(pt);
+            while (q.Count > 0)
+            {
+                Point n = q.Dequeue();
+                if (!ColorMatch(GetPixel(pixels, width, n.X, n.Y), targetColor))
+                    continue;
+                Point w = n, e = new Point(n.X + 1, n.Y);
+                while ((w.X >= 0) && ColorMatch(GetPixel(pixels, width, w.X, w.Y), targetColor))
+                {
+                    SetPixel(pixels, width, w.X, w.Y, replacementColor);
+                    if ((w.Y > 0) && ColorMatch(GetPixel(pixels, width, w.X, w.Y - 1), targetColor))
+                        q.Enqueue(new Point(w.X, w.Y - 1));
+                    if ((w.Y < height - 1) && ColorMatch(GetPixel(pixels, width, w.X, w.Y + 1), targetColor))
+                        q.Enqueue(new Point(w.X, w.Y + 1));
+                    w.X--;
+                }
+                while ((e.X <= width - 1) && ColorMatch(GetPixel(pixels, width, e.X, e.Y), targetColor))
+                {
+                    SetPixel(pixels, width, e.X, e.Y, replacementColor);
+                    if ((e.Y > 0) && ColorMatch(GetPixel(pixels, width, e.X, e.Y - 1), targetColor))
+                        q.Enqueue(new Point(e.X, e.Y - 1));
+                    if ((e.Y < height - 1) && ColorMatch(GetPixel(pixels, width, e.X, e.Y + 1), targetColor))
+                        q.Enqueue(new Point(e.X, e.Y + 1));
+                    e.X++;
+                }
+            }
         }
         private void effects_Changed(object sender, RoutedEventArgs e)
         {
@@ -124,6 +288,7 @@ namespace SubExt
         private void swapChainPanelTarget_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             m_ptRegionStart = new Point(0, 0);
+            p.Region = new Rect(Canvas.GetLeft(rectRegion) - m_rectMedia.Left, Canvas.GetTop(rectRegion) /*- m_rectMedia.Top*/, rectRegion.ActualWidth, rectRegion.ActualHeight);
         }
 
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -163,7 +328,7 @@ namespace SubExt
                 m_isRendering = true;
                 m_mediaReader.Seek(position);
                 // Get the specific frame and show on screen
-                using (var mediaResult = await m_mediaReader.VideoStream.ReadAsync())
+                using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
                 {
                     MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
 
@@ -180,15 +345,15 @@ namespace SubExt
                         // Apply effect
                         using (ContrastEffect contrastEffect = new ContrastEffect())
                         using (GrayscaleNegativeEffect grayscaleNegativeEffect = new GrayscaleNegativeEffect())
-                            using (StampEffect stampEffect = new StampEffect((int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
+                        using (StampEffect stampEffect = new StampEffect((int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
                         {
                             EffectList appliedEffects = new EffectList();
                             if (checkBoxContrast.IsChecked == true)
                                 appliedEffects.Add(contrastEffect);
-                            if (checkBoxGrayscaleNegative.IsChecked == true)
-                                appliedEffects.Add(grayscaleNegativeEffect);
                             if (checkBoxStamp.IsChecked == true)
                                 appliedEffects.Add(stampEffect);
+                            if (checkBoxGrayscaleNegative.IsChecked == true)
+                                appliedEffects.Add(grayscaleNegativeEffect);
 
                             // Apply image to the first effect
                             if (appliedEffects.Count > 0)
