@@ -37,8 +37,8 @@ namespace SubExt
             openPicker.ViewMode = PickerViewMode.Thumbnail;
             openPicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
             p.Video = await openPicker.PickSingleFileAsync();
-
-            Frame.Navigate(typeof(PreviewPage), p);
+            if (p.Video != null)
+                Frame.Navigate(typeof(PreviewPage), p);
         }
     }
 }

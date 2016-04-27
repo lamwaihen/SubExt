@@ -57,6 +57,7 @@ namespace SubExt
         {
              // Start from beginning
             m_mediaReader.Seek(TimeSpan.FromMilliseconds(sldPreview.Value));
+            progressPostProcessing.Maximum = 90;
             for (int i = 0; i < 90; i++)
             {
                 // Read each frame
@@ -122,6 +123,7 @@ namespace SubExt
                         }
                     }
                 }
+                progressPostProcessing.Value++;
             }
 
             Frame.Navigate(typeof(SubtitlePage), p);

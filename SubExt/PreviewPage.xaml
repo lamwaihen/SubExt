@@ -19,19 +19,29 @@
             </Canvas>
             <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>
         </StackPanel>
-        <Grid Grid.Column="1">
+        <Grid x:Name="gridControls" Grid.Column="1">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0">
+            <RelativePanel Grid.Row="0">
+                <TextBox x:Name="textBoxRegionX" Header="X" HorizontalAlignment="Left" Margin="12,4"/>
+                <TextBox x:Name="textBoxRegionY" Header="Y" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionX"/>
+                <TextBox x:Name="textBoxRegionW" Header="Width" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionY"/>
+                <TextBox x:Name="textBoxRegionH" Header="Height" HorizontalAlignment="Left" Margin="12,4" InputScope="Digits" RelativePanel.RightOf="textBoxRegionW"/>
+            </RelativePanel>
+            <StackPanel Grid.Row="1">
                 <CheckBox x:Name="checkBoxGrayscaleNegative" Content="Grayscale Negative" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
                 <CheckBox x:Name="checkBoxContrast" Content="Contrast" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
                 <CheckBox x:Name="checkBoxStamp" Content="Stamp" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
                 <Slider x:Name="sliderStampSmoothness" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="6" TickPlacement="TopLeft" TickFrequency="1"/>
                 <Slider x:Name="sliderStampThreshold" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="1" StepFrequency="0.01" SmallChange="0.1" TickFrequency="0.05" Value="0.45" TickPlacement="TopLeft"/>
             </StackPanel>
-            <Button x:Name="buttonProceed" Grid.Row="1" Content="Proceed" Margin="8" HorizontalAlignment="Center" Click="buttonProceed_Click"/>
+            <RelativePanel Grid.Row="2">
+                <Button x:Name="buttonProceed" Content="Proceed" Margin="8" Click="buttonProceed_Click" HorizontalAlignment="Center"/>
+                <ProgressBar x:Name="progressPostProcessing" Margin="12,4" SmallChange="1" RelativePanel.Below="buttonProceed" LargeChange="30" MinWidth="384"/>
+            </RelativePanel>
         </Grid>
     </Grid>
 </Page>
