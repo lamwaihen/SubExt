@@ -32,7 +32,7 @@ namespace SubExt
     {
         private Payload p;
         private Point m_ptRegionStart;
-        private Rect m_rectMedia;
+        private Rect m_rectPreview;
 
         private SwapChainPanelRenderer m_renderer;
         private MediaReader m_mediaReader;
@@ -50,7 +50,7 @@ namespace SubExt
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            p.Region = new Rect(Canvas.GetLeft(rectRegion), Canvas.GetTop(rectRegion), rectRegion.ActualWidth, rectRegion.ActualHeight);
+            //p.Region = new Rect(Canvas.GetLeft(rectRegion), Canvas.GetTop(rectRegion), rectRegion.ActualWidth, rectRegion.ActualHeight);
         }
 
         private async void buttonProceed_Click(object sender, RoutedEventArgs e)
@@ -81,14 +81,14 @@ namespace SubExt
                             );
 
                             // Apply effect
-                            using (CropEffect cropEffect = new CropEffect(new BitmapImageSource(inputBitmap), p.Region))
+                            using (CropEffect cropEffect = new CropEffect(new BitmapImageSource(inputBitmap), p.SubtitleRect))
                             using (ContrastEffect contrastEffect = new ContrastEffect(cropEffect))
                             using (GrayscaleNegativeEffect grayscaleNegativeEffect = new GrayscaleNegativeEffect(contrastEffect))
                             using (StampEffect stampEffect = new StampEffect(grayscaleNegativeEffect, (int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
                             {
     
-                                WriteableBitmap WB = new WriteableBitmap((int)p.Region.Width, (int)p.Region.Height);
-                                WriteableBitmapRenderer renderer = new WriteableBitmapRenderer(cropEffect, WB);
+                                WriteableBitmap WB = new WriteableBitmap((int)p.SubtitleRect.Width, (int)p.SubtitleRect.Height);
+                                WriteableBitmapRenderer renderer = new WriteableBitmapRenderer(stampEffect, WB);
                                 await renderer.RenderAsync();
 
                                 StorageFile file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(((int)inputSample.Timestamp.TotalMilliseconds).ToString("D6") + ".jpg", CreationCollisionOption.ReplaceExisting);
@@ -96,7 +96,7 @@ namespace SubExt
                                 {
                                     var propertySet = new Windows.Graphics.Imaging.BitmapPropertySet();
                                     var qualityValue = new Windows.Graphics.Imaging.BitmapTypedValue(
-                                        0.6, // Maximum quality
+                                        1.0, // Maximum quality
                                         Windows.Foundation.PropertyType.Single
                                         );
 
@@ -253,7 +253,7 @@ namespace SubExt
 
             PointerPoint ptrPt = e.GetCurrentPoint(swapChainPanelTarget);
             m_ptRegionStart = ptrPt.Position;
-            if (!m_rectMedia.Contains(m_ptRegionStart))
+            if (!m_rectPreview.Contains(m_ptRegionStart))
                 return;
 
             // Initialize the rectangle.
@@ -288,7 +288,9 @@ namespace SubExt
         private void swapChainPanelTarget_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             m_ptRegionStart = new Point(0, 0);
-            p.Region = new Rect(Canvas.GetLeft(rectRegion) - m_rectMedia.Left, Canvas.GetTop(rectRegion) /*- m_rectMedia.Top*/, rectRegion.ActualWidth, rectRegion.ActualHeight);
+            double w = p.OriginalSize.Width / m_rectPreview.Width;
+            double h = p.OriginalSize.Height / m_rectPreview.Height;
+            p.SubtitleRect = new Rect((Canvas.GetLeft(rectRegion) - m_rectPreview.Left) * w, (Canvas.GetTop(rectRegion) - m_rectPreview.Top) * h, rectRegion.ActualWidth * w, rectRegion.ActualHeight * h);
         }
 
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -302,11 +304,21 @@ namespace SubExt
             using (var mediaResult = await m_mediaReader.VideoStream.ReadAsync())
             {
                 MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
-                m_rectMedia.Width = swapChainPanelTarget.ActualWidth;
-                m_rectMedia.Height = (double)inputSample.Height / inputSample.Width * m_rectMedia.Width;
-                m_rectMedia.X = 0;
-                m_rectMedia.Y = (double)(swapChainPanelTarget.ActualHeight - m_rectMedia.Height) / 2;
-            }
+
+                double uar = swapChainPanelTarget.ActualWidth / swapChainPanelTarget.ActualHeight; // Aspect ratio of UI
+                double par = (double)inputSample.Width / inputSample.Height;    // Aspect ratio of video
+
+                if (par > uar)
+                {
+                    double height = (double)swapChainPanelTarget.ActualWidth / par;
+                    m_rectPreview = new Rect(0, (double)(swapChainPanelTarget.ActualHeight - height) / 2, swapChainPanelTarget.ActualWidth, height);
+                }
+                else
+                {
+                    double width = (double)swapChainPanelTarget.ActualHeight * par;
+                    m_rectPreview = new Rect((double)(swapChainPanelTarget.ActualWidth - width) / 2, 0, width, swapChainPanelTarget.ActualHeight);
+                }
+             }
         }
         private async void OpenPreviewVideo()
         {
@@ -331,6 +343,8 @@ namespace SubExt
                 using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
                 {
                     MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
+                    if (p.OriginalSize.Width == 0)
+                        p.OriginalSize = new Size(inputSample.Width, inputSample.Height);
 
                     using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
                     {
