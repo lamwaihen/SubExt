@@ -20,7 +20,8 @@ using Windows.UI.Xaml.Navigation;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.IO;
 using System.Threading.Tasks;
-
+using SubExt.Model;
+using SubExt.ViewModel;
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
 namespace SubExt
@@ -56,11 +57,12 @@ namespace SubExt
 
         private async void buttonProceed_Click(object sender, RoutedEventArgs e)
         {
+            p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();
              // Start from beginning
             m_mediaReader.Seek(TimeSpan.FromMilliseconds(sldPreview.Value));
 
             StorageFile file = null;
-            for (int i = 0; i < 1200; i++)
+            for (int i = 0; i < 600; i++)
             {
                 // Read each frame
                 using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
@@ -107,6 +109,15 @@ namespace SubExt
                                             (uint)WB.PixelWidth, (uint)WB.PixelHeight,
                                             96.0, 96.0, pixels);
                                         await encoder.FlushAsync();
+
+                                        VideoFrame frame = new VideoFrame()
+                                        {
+                                            BeginTime = inputSample.Timestamp,
+                                            EndTime = inputSample.Timestamp,
+                                            Image = file,
+                                            ImageSize = new Size(WB.PixelWidth, WB.PixelHeight)   
+                                        };
+                                        p.VideoFrames.Add(frame);
                                     }
                                 }
                                 else
@@ -121,6 +132,8 @@ namespace SubExt
                                         filename = sub + "-" + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".jpg";
                                     }
                                     await file.RenameAsync(filename);
+
+                                    p.VideoFrames[p.VideoFrames.Count - 1].EndTime = inputSample.Timestamp;
                                 }
                             }
                         }

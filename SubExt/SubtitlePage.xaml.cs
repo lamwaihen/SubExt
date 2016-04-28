@@ -12,6 +12,7 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using SubExt.ViewModel;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -30,6 +31,7 @@ namespace SubExt
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             p = e.Parameter as Payload;
+            ItemViewOnPage.DataContext = p.VideoFrames;
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
