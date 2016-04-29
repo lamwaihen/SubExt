@@ -27,12 +27,12 @@ namespace SubExt.Model
             set { _subtitle = value; RaisePropertyChanged(); }
         }
         private string _subtitle;
-        public StorageFile Image
+        public StorageFile ImageFile
         {
-            get { return _image; }
-            set { _image = value; RaisePropertyChanged(); }
+            get { return _imageFile; }
+            set { _imageFile = value; RaisePropertyChanged(); }
         }
-        private StorageFile _image;
+        private StorageFile _imageFile;
         public Size ImageSize
         {
             get { return _imageSize; }

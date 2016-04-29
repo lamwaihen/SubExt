@@ -8,6 +8,11 @@
     xmlns:views="clr-namespace:SubExt.View;assembly="
     mc:Ignorable="d">
 
+    <Page.Resources>
+        <local:TimeSpanFormatter x:Key="TimeSpanFormatter"/>
+        <local:ImageSourceFormatter x:Key="ImageSourceFormatter"/>
+    </Page.Resources>
+
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <ListBox x:Name="ItemViewOnPage" ItemsSource="{Binding}">
             <ListBox.ItemTemplate>
@@ -18,9 +23,10 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <RelativePanel Grid.Column="0">
-                            <TextBlock x:Name="textBeginTime"/>
-                            <TextBlock x:Name="textEndTime" RelativePanel.RightOf="textBeginTime"/>
-                            <Image RelativePanel.Below="textBeginTime"/>
+                            <TextBlock x:Name="textBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }}"/>
+                            <TextBlock x:Name="textBlockSep" Text=" --> " RelativePanel.RightOf="textBeginTime"/>
+                            <TextBlock x:Name="textEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }}" RelativePanel.RightOf="textBlockSep"/>
+                            <Image Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" RelativePanel.Below="textBeginTime"/>
                         </RelativePanel>
                         <RelativePanel Grid.Column="1">
                             <Button x:Name="buttonInsert" Content="Insert"/>

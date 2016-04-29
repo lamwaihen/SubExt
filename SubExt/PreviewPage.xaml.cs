@@ -18,8 +18,6 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.IO;
-using System.Threading.Tasks;
 using SubExt.Model;
 using SubExt.ViewModel;
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -59,11 +57,14 @@ namespace SubExt
         {
             p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();
              // Start from beginning
-            m_mediaReader.Seek(TimeSpan.FromMilliseconds(sldPreview.Value));
+            m_mediaReader.Seek(TimeSpan.FromMilliseconds(0));
+            // Total frames
+            Windows.Media.MediaProperties.VideoEncodingProperties v = m_mediaReader.VideoStream.GetCurrentStreamProperties();
+            int frames = (int)(((double)v.FrameRate.Numerator / v.FrameRate.Denominator) * m_mediaReader.Duration.TotalSeconds);
 
-            progressPostProcessing.Maximum = 90;
+            progressPostProcessing.Maximum = frames;
             StorageFile file = null;
-            for (int i = 0; i < 600; i++)
+            for (int i = 0; i < frames; i++)
             {
                 // Read each frame
                 using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
@@ -115,7 +116,7 @@ namespace SubExt
                                         {
                                             BeginTime = inputSample.Timestamp,
                                             EndTime = inputSample.Timestamp,
-                                            Image = file,
+                                            ImageFile = file,
                                             ImageSize = new Size(WB.PixelWidth, WB.PixelHeight)   
                                         };
                                         p.VideoFrames.Add(frame);
