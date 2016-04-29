@@ -133,7 +133,7 @@ namespace SubExt
                                         string sub = filename.Substring(0, filename.LastIndexOf("."));
                                         filename = sub + "-" + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".jpg";
                                     }
-                                    await file.RenameAsync(filename);
+                                    await file.RenameAsync(filename, NameCollisionOption.ReplaceExisting);
 
                                     p.VideoFrames[p.VideoFrames.Count - 1].EndTime = inputSample.Timestamp;
                                 }
