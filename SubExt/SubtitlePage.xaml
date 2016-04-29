@@ -14,7 +14,11 @@
     </Page.Resources>
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <ListBox x:Name="ItemViewOnPage" ItemsSource="{Binding}">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <ListBox x:Name="ItemViewOnPage" Grid.Row="0" ItemsSource="{Binding}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid>
@@ -33,11 +37,15 @@
                             <Button x:Name="buttonMergeUp" Content="Merge Up" Margin="4" Click="buttonMergeUp_Click" RelativePanel.RightOf="buttonInsert"/>
                             <Button x:Name="buttonMergeDown" Content="Merge Down" Margin="4" Click="buttonMergeDown_Click" RelativePanel.RightOf="buttonMergeUp"/>
                             <Button x:Name="buttonDelete" Content="Delete" Margin="4" Click="buttonDelete_Click" RelativePanel.RightOf="buttonMergeDown"/>
-                            <TextBox RelativePanel.Below="buttonInsert"/>
+                            <TextBox x:Name="textBoxSubtitle" Text="{Binding Subtitle, Mode=TwoWay}" RelativePanel.Below="buttonInsert" RelativePanel.AlignRightWithPanel="True"/>
                         </RelativePanel>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        <RelativePanel Grid.Row="1">
+            <Button x:Name="buttonSaveAsImg" Content="Save as Image" Margin="4" Click="buttonSaveAsImg_Click"/>
+            <Button x:Name="buttonSaveAsSrt" Content="Save as SRT" Margin="4" Click="buttonSaveAsSrt_Click" RelativePanel.RightOf="buttonSaveAsImg"/>
+        </RelativePanel>
     </Grid>
 </Page>

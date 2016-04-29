@@ -1,6 +1,7 @@
 ﻿using System;
 using Windows.Foundation;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
@@ -9,6 +10,7 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using SubExt.Model;
 using SubExt.ViewModel;
+using System.Collections.Generic;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -75,6 +77,33 @@ namespace SubExt
             Button item = sender as Button;
             p.VideoFrames.Remove(item.DataContext as VideoFrame);
         }
+
+        private async void buttonSaveAsSrt_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            FileSavePicker savePicker = new FileSavePicker();
+            savePicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
+            // Dropdown of file types the user can save the file as
+            savePicker.FileTypeChoices.Add("SRT", new List<string>() { ".srt" });
+            // Default file name if the user does not type one in or select a file to replace
+            savePicker.SuggestedFileName = p.Video.DisplayName;
+
+            StorageFile file = await savePicker.PickSaveFileAsync();
+            if (file != null)
+            {
+                for (int i = 0; i < p.VideoFrames.Count; i++)
+                {
+                    string subtitle = i.ToString() + Environment.NewLine;
+                    subtitle += p.VideoFrames[i].BeginTime.ToString(@"hh\:mm\:ss\,fff") + " --> " + p.VideoFrames[i].EndTime.ToString(@"hh\:mm\:ss\,fff") + Environment.NewLine;
+                    subtitle += p.VideoFrames[i].Subtitle + Environment.NewLine + Environment.NewLine;
+                    await FileIO.AppendTextAsync(file, subtitle, UnicodeEncoding.Utf8);
+                }
+            }
+        }
+
+        private void buttonSaveAsImg_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+
+        }
     }
 
     public class TimeSpanFormatter : IValueConverter
@@ -85,7 +114,7 @@ namespace SubExt
             object parameter, string language)
         {
             TimeSpan ts = value == null ? new TimeSpan() : (TimeSpan)value;            
-            return ts.ToString(@"hh\:mm\:ss\.fff");
+            return ts.ToString(@"hh\:mm\:ss\,fff");
         }
 
         // No need to implement converting back on a one-way binding
