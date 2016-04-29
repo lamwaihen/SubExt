@@ -29,10 +29,10 @@
                             <Image Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" RelativePanel.Below="textBeginTime"/>
                         </RelativePanel>
                         <RelativePanel Grid.Column="1">
-                            <Button x:Name="buttonInsert" Content="Insert"/>
-                            <Button x:Name="buttonMergeUp" Content="Merge Up" RelativePanel.RightOf="buttonInsert"/>
-                            <Button x:Name="buttonMergeDown" Content="Merge Down" RelativePanel.RightOf="buttonMergeUp"/>
-                            <Button x:Name="buttonDelete" Content="Delete" RelativePanel.RightOf="buttonMergeDown"/>
+                            <Button x:Name="buttonInsert" Content="Insert" Margin="4" Click="buttonInsert_Click"/>
+                            <Button x:Name="buttonMergeUp" Content="Merge Up" Margin="4" Click="buttonMergeUp_Click" RelativePanel.RightOf="buttonInsert"/>
+                            <Button x:Name="buttonMergeDown" Content="Merge Down" Margin="4" Click="buttonMergeDown_Click" RelativePanel.RightOf="buttonMergeUp"/>
+                            <Button x:Name="buttonDelete" Content="Delete" Margin="4" Click="buttonDelete_Click" RelativePanel.RightOf="buttonMergeDown"/>
                             <TextBox RelativePanel.Below="buttonInsert"/>
                         </RelativePanel>
                     </Grid>

@@ -7,6 +7,7 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using SubExt.Model;
 using SubExt.ViewModel;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -31,6 +32,48 @@ namespace SubExt
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             
+        }
+
+        private void buttonInsert_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            Button item = sender as Button;
+            VideoFrame frame = item.DataContext as VideoFrame;
+
+            int curIdx = p.VideoFrames.IndexOf(frame);
+            VideoFrame framePrev = p.VideoFrames[curIdx - 1];
+            VideoFrame frameNew = new VideoFrame() {
+                BeginTime = new TimeSpan(framePrev.EndTime.Ticks + 1),
+                EndTime = new TimeSpan(frame.BeginTime.Ticks - 1),
+            };
+            p.VideoFrames.Insert(curIdx, frameNew);
+        }
+
+        private void buttonMergeUp_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            Button item = sender as Button;
+            VideoFrame frame = item.DataContext as VideoFrame;
+
+            int curIdx = p.VideoFrames.IndexOf(frame);
+            VideoFrame framePrev = p.VideoFrames[curIdx - 1];
+            frame.BeginTime = framePrev.BeginTime;
+            p.VideoFrames.Remove(framePrev);
+        }
+
+        private void buttonMergeDown_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            Button item = sender as Button;
+            VideoFrame frame = item.DataContext as VideoFrame;
+
+            int curIdx = p.VideoFrames.IndexOf(frame);
+            VideoFrame frameNext = p.VideoFrames[curIdx + 1];
+            frame.EndTime = frameNext.EndTime;
+            p.VideoFrames.Remove(frameNext);
+        }
+
+        private void buttonDelete_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            Button item = sender as Button;
+            p.VideoFrames.Remove(item.DataContext as VideoFrame);
         }
     }
 
@@ -66,21 +109,25 @@ namespace SubExt
         public object Convert(object value, Type targetType,
             object parameter, string language)
         {
-            StorageFile file = value as StorageFile;
-
-            BitmapImage bmp = new BitmapImage();
-            file.OpenAsync(FileAccessMode.Read).Completed = new AsyncOperationCompletedHandler<IRandomAccessStream>((openInfo, openStatus) =>
+            if (value != null)
             {
-                if (openStatus == AsyncStatus.Completed)
+                StorageFile file = value as StorageFile;
+
+                BitmapImage bmp = new BitmapImage();
+                file.OpenAsync(FileAccessMode.Read).Completed = new AsyncOperationCompletedHandler<IRandomAccessStream>((openInfo, openStatus) =>
                 {
-                    UIThreadAsync(() =>
+                    if (openStatus == AsyncStatus.Completed)
                     {
-                        IRandomAccessStream stream = openInfo.GetResults();
-                        bmp.SetSource(stream);
-                    });
-                }
-            });
-            return bmp;
+                        UIThreadAsync(() =>
+                        {
+                            IRandomAccessStream stream = openInfo.GetResults();
+                            bmp.SetSource(stream);
+                        });
+                    }
+                });
+                return bmp;
+            }
+            return null;
         }
 
         // No need to implement converting back on a one-way binding
