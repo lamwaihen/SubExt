@@ -8,9 +8,13 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI;
 using SubExt.Model;
 using SubExt.ViewModel;
 using System.Collections.Generic;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -100,9 +104,74 @@ namespace SubExt
             }
         }
 
-        private void buttonSaveAsImg_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private async void buttonSaveAsImg_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
+            FileSavePicker savePicker = new FileSavePicker();
+            savePicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
+            // Dropdown of file types the user can save the file as
+            savePicker.FileTypeChoices.Add("JPG", new List<string>() { ".jpg" });
+            // Default file name if the user does not type one in or select a file to replace
+            savePicker.SuggestedFileName = p.Video.DisplayName;
 
+            StorageFile file = await savePicker.PickSaveFileAsync();
+            if (file != null)
+            {
+
+                using (var stream0 = await p.VideoFrames[0].ImageFile.OpenAsync(FileAccessMode.Read))
+                using (var stream1 = await p.VideoFrames[1].ImageFile.OpenAsync(FileAccessMode.Read))
+                {
+                    var device = new CanvasDevice();
+                    var bitmap0 = await CanvasBitmap.LoadAsync(device, stream0);
+                    var bitmap1 = await CanvasBitmap.LoadAsync(device, stream1);
+
+                    
+
+                    // Initialize to solid gray.
+                    var bitmap = CanvasBitmap.CreateFromColors(device, new Color[] { Colors.Gray, Colors.Black, Colors.Black, Colors.Gray }, (int)bitmap0.SizeInPixels.Width, (int)bitmap0.SizeInPixels.Height);
+                    var renderer = new CanvasRenderTarget(device, bitmap0.SizeInPixels.Width, bitmap0.SizeInPixels.Height * 2, bitmap0.Dpi);
+
+                    using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
+                    {
+                        //var blur = new GaussianBlurEffect();
+                        //blur.BlurAmount = 8.0f;
+                        //blur.BorderMode = EffectBorderMode.Hard;
+                        //blur.Optimization = EffectOptimization.Quality;
+                        //blur.Source = bitmap;
+                        var blend = new BlendEffect()
+                        {
+                            Background = bitmap,
+                            Foreground = bitmap1,
+                            Mode = BlendEffectMode.Color
+                        };
+                        Rect rt = new Rect(0, bitmap0.SizeInPixels.Height, bitmap0.SizeInPixels.Width, bitmap0.SizeInPixels.Height);
+                        float ft = 0.5f;
+                        ds.DrawImage(blend);
+                    }
+
+                    using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                    {
+                        await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
+                    }
+                }
+            }
+            //p.VideoFrames[0].ImageSize;
+
+
+            //file.OpenReadAsync()) { WriteableBitmap bitmap = new WriteableBitmap(width, height); await bitmap.SetSourceAsync(stream); }
+
+
+            //BitmapImage bitmap = new BitmapImage(new Uri("YourImage.jpg", UriKind.Relative));
+            //WriteableBitmap writeableBitmap = new WriteableBitmap(bitmap);
+            //// Say this is the image bytes...
+            //var imageBytes = MyBitmap.PixelBuffer.ToArray();
+            //// Create an inmemory RAS
+            //var inMemoryRandomAccessStream = new InMemoryRandomAccessStream();
+            //// Write the bytes to the stream..
+            //await(inMemoryRandomAccessStream.AsStreamForWrite()).WriteAsync(imageBytes, 0, imageBytes.Length);
+            //// Flush the bytes
+            //await inMemoryRandomAccessStream.FlushAsync();
+            //// Set back the position
+            //inMemoryRandomAccessStream.Seek(0);
         }
     }
 
