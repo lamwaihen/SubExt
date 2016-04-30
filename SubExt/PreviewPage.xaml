@@ -7,6 +7,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d" SizeChanged="Page_SizeChanged">
 
+    <Page.Resources>
+        <local:SubtitleRectFormatter x:Key="SubtitleRectFormatter"/>
+    </Page.Resources>
+
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
@@ -26,10 +30,10 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <RelativePanel Grid.Row="0">
-                <TextBox x:Name="textBoxRegionX" Header="X" HorizontalAlignment="Left" Margin="12,4"/>
-                <TextBox x:Name="textBoxRegionY" Header="Y" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionX"/>
-                <TextBox x:Name="textBoxRegionW" Header="Width" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionY"/>
-                <TextBox x:Name="textBoxRegionH" Header="Height" HorizontalAlignment="Left" Margin="12,4" InputScope="Digits" RelativePanel.RightOf="textBoxRegionW"/>
+                <TextBox x:Name="textBoxRegionX" Header="X" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=X}" HorizontalAlignment="Left" Margin="12,4"/>
+                <TextBox x:Name="textBoxRegionY" Header="Y" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=Y}" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionX"/>
+                <TextBox x:Name="textBoxRegionW" Header="Width" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=W}" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionY"/>
+                <TextBox x:Name="textBoxRegionH" Header="Height" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=H}" HorizontalAlignment="Left" Margin="12,4" InputScope="Digits" RelativePanel.RightOf="textBoxRegionW"/>
             </RelativePanel>
             <StackPanel Grid.Row="1">
                 <CheckBox x:Name="checkBoxGrayscaleNegative" Content="Grayscale Negative" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>

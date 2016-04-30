@@ -14,6 +14,7 @@ using Windows.UI.Input;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
@@ -29,7 +30,7 @@ namespace SubExt
     /// </summary>
     public sealed partial class PreviewPage : Page
     {
-        private Payload p;
+        public Payload p = new Payload();
         private Point m_ptRegionStart;
         private Rect m_rectPreview;
 
@@ -218,9 +219,13 @@ namespace SubExt
 
             Canvas.SetLeft(rectRegion, x);
             Canvas.SetTop(rectRegion, y);
+
+            w = p.OriginalSize.Width / m_rectPreview.Width;
+            h = p.OriginalSize.Height / m_rectPreview.Height;
+            p.SubtitleRect = new Rect((Canvas.GetLeft(rectRegion) - m_rectPreview.Left) * w, (Canvas.GetTop(rectRegion) - m_rectPreview.Top) * h, rectRegion.ActualWidth * w, rectRegion.ActualHeight * h);
         }
         private void swapChainPanelTarget_PointerReleased(object sender, PointerRoutedEventArgs e)
-        {
+        {            
             m_ptRegionStart = new Point(0, 0);
             double w = p.OriginalSize.Width / m_rectPreview.Width;
             double h = p.OriginalSize.Height / m_rectPreview.Height;
@@ -455,6 +460,44 @@ namespace SubExt
                     }
                 }
             }
+        }
+    }
+
+    public class SubtitleRectFormatter : IValueConverter
+    {
+        private Rect _rt;
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value != null)
+            {                
+                _rt = (Rect)value;
+                string p = parameter as string;
+                if (p == "X")
+                    return _rt.X.ToString("0.00");
+                else if (p == "Y")
+                    return _rt.Y.ToString("0.00");
+                else if (p == "W")
+                    return _rt.Width.ToString("0.00");
+                else if (p == "H")
+                    return _rt.Height.ToString("0.00");
+            }
+
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            string p = parameter as string;
+            if (p == "X")
+                _rt.X = double.Parse(value as string);
+            else if (p == "Y")
+                _rt.Y = double.Parse(value as string);
+            else if (p == "W")
+                _rt.Width = double.Parse(value as string);
+            else if (p == "H")
+                _rt.Height = double.Parse(value as string);
+
+            return _rt;
         }
     }
 }

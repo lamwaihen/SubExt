@@ -204,8 +204,7 @@ namespace SubExt
 
         // This converts the value object to Visibility.
         // This will work with most simple types.
-        public object Convert(object value, Type targetType,
-            object parameter, string language)
+        public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value != null)
             {
@@ -229,8 +228,7 @@ namespace SubExt
         }
 
         // No need to implement converting back on a one-way binding
-        public object ConvertBack(object value, Type targetType,
-            object parameter, string language)
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
