@@ -14,6 +14,7 @@ using SubExt.ViewModel;
 using System.Collections.Generic;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.Text;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -116,62 +117,42 @@ namespace SubExt
             StorageFile file = await savePicker.PickSaveFileAsync();
             if (file != null)
             {
-
-                using (var stream0 = await p.VideoFrames[0].ImageFile.OpenAsync(FileAccessMode.Read))
-                using (var stream1 = await p.VideoFrames[1].ImageFile.OpenAsync(FileAccessMode.Read))
+                CanvasDevice device = new CanvasDevice();
+                CanvasRenderTarget renderer = null;
+                CanvasTextFormat font = new CanvasTextFormat
                 {
-                    var device = new CanvasDevice();
-                    var bitmap0 = await CanvasBitmap.LoadAsync(device, stream0);
-                    var bitmap1 = await CanvasBitmap.LoadAsync(device, stream1);
+                    FontFamily = "Segoe UI",
+                    FontSize = 24
+                };
+                Rect rtSource = Rect.Empty, rtDest = Rect.Empty;
 
-                    
-
-                    // Initialize to solid gray.
-                    var bitmap = CanvasBitmap.CreateFromColors(device, new Color[] { Colors.Gray, Colors.Black, Colors.Black, Colors.Gray }, (int)bitmap0.SizeInPixels.Width, (int)bitmap0.SizeInPixels.Height);
-                    var renderer = new CanvasRenderTarget(device, bitmap0.SizeInPixels.Width, bitmap0.SizeInPixels.Height * 2, bitmap0.Dpi);
-
-                    using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
+                for (int i = 0; i < p.VideoFrames.Count; i++)
+                {
+                    using (IRandomAccessStream stream = await p.VideoFrames[i].ImageFile.OpenAsync(FileAccessMode.Read))
                     {
-                        //var blur = new GaussianBlurEffect();
-                        //blur.BlurAmount = 8.0f;
-                        //blur.BorderMode = EffectBorderMode.Hard;
-                        //blur.Optimization = EffectOptimization.Quality;
-                        //blur.Source = bitmap;
-                        var blend = new BlendEffect()
+                        CanvasBitmap bitmap = await CanvasBitmap.LoadAsync(device, stream);
+
+                        if (rtSource.IsEmpty)
+                            rtSource = new Rect(0, 0, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
+                        if (renderer == null)
+                            renderer = new CanvasRenderTarget(device, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height * 2 * p.VideoFrames.Count, bitmap.Dpi);
+
+                        using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
                         {
-                            Background = bitmap,
-                            Foreground = bitmap1,
-                            Mode = BlendEffectMode.Color
-                        };
-                        Rect rt = new Rect(0, bitmap0.SizeInPixels.Height, bitmap0.SizeInPixels.Width, bitmap0.SizeInPixels.Height);
-                        float ft = 0.5f;
-                        ds.DrawImage(blend);
-                    }
-
-                    using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
-                    {
-                        await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
+                            rtDest = new Rect(0, bitmap.SizeInPixels.Height * i * 2, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
+                            ds.FillRectangle(rtDest, Colors.White);
+                            ds.DrawText(string.Format("#{0}", i), rtDest, Colors.Black, font);
+                            rtDest.Y += bitmap.SizeInPixels.Height;
+                            ds.DrawImage(bitmap, rtDest, rtSource);
+                        }
                     }
                 }
+
+                using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                {
+                    await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
+                }
             }
-            //p.VideoFrames[0].ImageSize;
-
-
-            //file.OpenReadAsync()) { WriteableBitmap bitmap = new WriteableBitmap(width, height); await bitmap.SetSourceAsync(stream); }
-
-
-            //BitmapImage bitmap = new BitmapImage(new Uri("YourImage.jpg", UriKind.Relative));
-            //WriteableBitmap writeableBitmap = new WriteableBitmap(bitmap);
-            //// Say this is the image bytes...
-            //var imageBytes = MyBitmap.PixelBuffer.ToArray();
-            //// Create an inmemory RAS
-            //var inMemoryRandomAccessStream = new InMemoryRandomAccessStream();
-            //// Write the bytes to the stream..
-            //await(inMemoryRandomAccessStream.AsStreamForWrite()).WriteAsync(imageBytes, 0, imageBytes.Length);
-            //// Flush the bytes
-            //await inMemoryRandomAccessStream.FlushAsync();
-            //// Set back the position
-            //inMemoryRandomAccessStream.Seek(0);
         }
     }
 
