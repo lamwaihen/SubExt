@@ -4,6 +4,7 @@
     <NuGetPackageRoot>$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
   </PropertyGroup>
   <ImportGroup>
+    <Import Project="$(NuGetPackageRoot)\Microsoft.Bcl.Build\1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('$(NuGetPackageRoot)\Microsoft.Bcl.Build\1.0.21\build\Microsoft.Bcl.Build.targets')" />
     <Import Project="$(NuGetPackageRoot)\MMaitre.MediaCaptureReader\2.1.6\build\win81\MMaitre.MediaCaptureReader.targets" Condition="Exists('$(NuGetPackageRoot)\MMaitre.MediaCaptureReader\2.1.6\build\win81\MMaitre.MediaCaptureReader.targets')" />
   </ImportGroup>
 </Project>

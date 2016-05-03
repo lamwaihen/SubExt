@@ -44,7 +44,8 @@
             </ListBox.ItemTemplate>
         </ListBox>
         <RelativePanel Grid.Row="1">
-            <Button x:Name="buttonSaveAsImg" Content="Save as Image" Margin="4" Click="buttonSaveAsImg_Click"/>
+            <Button x:Name="buttonStartOcr" Content="Start OCR" Margin="4" Click="buttonStartOcr_Click"/>
+            <Button x:Name="buttonSaveAsImg" Content="Save as Image" Margin="4" Click="buttonSaveAsImg_Click" RelativePanel.RightOf="buttonStartOcr"/>
             <Button x:Name="buttonSaveAsSrt" Content="Save as SRT" Margin="4" Click="buttonSaveAsSrt_Click" RelativePanel.RightOf="buttonSaveAsImg"/>
         </RelativePanel>
     </Grid>

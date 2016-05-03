@@ -1,9 +1,9 @@
-﻿using System;
+﻿using SubExt.ViewModel;
+using System;
 using Windows.Storage.Pickers;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
-using SubExt.ViewModel;
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
 namespace SubExt
@@ -14,12 +14,11 @@ namespace SubExt
     public sealed partial class MainPage : Page
     {
         private Payload p;
-        
         public MainPage()
         {
             this.InitializeComponent();
 
-            p = new Payload();  
+            p = new Payload();                        
         }
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {

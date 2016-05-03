@@ -1,6 +1,17 @@
-﻿using System;
-using Windows.Foundation;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Drive.v3;
+using Google.Apis.Services;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Text;
+using SubExt.Model;
+using SubExt.ViewModel;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using Windows.Storage;
+using Windows.Foundation;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
@@ -9,13 +20,6 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI;
-using SubExt.Model;
-using SubExt.ViewModel;
-using System.Collections.Generic;
-using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.Effects;
-using Microsoft.Graphics.Canvas.Text;
-using Microsoft.Graphics.Canvas.UI.Xaml;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,6 +31,9 @@ namespace SubExt
     public sealed partial class SubtitlePage : Page
     {
         private Payload p;
+
+        static string[] Scopes = { DriveService.Scope.DriveFile };
+        static string ApplicationName = "Subtitle Extractor";
         public SubtitlePage()
         {
             this.InitializeComponent();
@@ -150,6 +157,65 @@ namespace SubExt
                 {
                     await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
                 }
+            }
+        }
+
+        private async void buttonStartOcr_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            UserCredential credential = null;
+
+            //using (var stream = new FileStream("client_secret.json", FileMode.Open, FileAccess.Read))
+            {
+                string credPath = ApplicationData.Current.TemporaryFolder.Path;
+                credPath = Path.Combine(credPath, ".credentials/drive-dotnet-quickstart.json");
+
+                ClientSecrets cs = new ClientSecrets
+                {
+                    ClientId = "your clientId",
+                    ClientSecret = "your clientSecret"
+                };
+
+                try
+                {
+                    credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                new Uri("ms-appx:///Assets/client_secret.json"),
+                 new[] { DriveService.Scope.DriveFile },
+                 "user",
+                 CancellationToken.None);
+                }
+                catch (AggregateException ex)
+                {
+                    int n = 0;
+                }
+                Debug.WriteLine("Credential file saved to: " + credPath);
+            }
+
+            // Create Drive API service.
+            var service = new DriveService(new BaseClientService.Initializer()
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = ApplicationName,
+            });
+
+            // Define parameters of request.
+            FilesResource.ListRequest listRequest = service.Files.List();
+            listRequest.PageSize = 10;
+            listRequest.Fields = "nextPageToken, files(id, name)";
+
+            // List files.
+            IList<Google.Apis.Drive.v3.Data.File> files = listRequest.Execute()
+                .Files;
+            Debug.WriteLine("Files:");
+            if (files != null && files.Count > 0)
+            {
+                foreach (var file in files)
+                {
+                    Debug.WriteLine("{0} ({1})", file.Name, file.Id);
+                }
+            }
+            else
+            {
+                Debug.WriteLine("No files found.");
             }
         }
     }

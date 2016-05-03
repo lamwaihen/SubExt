@@ -1,9 +1,11 @@
 ﻿{
   "dependencies": {
+    "Google.Apis.Drive.v3": "1.12.0.480",
     "LumiaImagingSDK.UWP": "3.0.593",
     "Microsoft.ApplicationInsights": "2.0.1",
     "Microsoft.ApplicationInsights.PersistenceChannel": "1.2.3",
     "Microsoft.ApplicationInsights.WindowsApps": "1.1.1",
+    "Microsoft.Bcl.Async": "1.0.168",
     "Microsoft.NETCore.UniversalWindowsPlatform": "5.1.0",
     "MMaitre.MediaCaptureReader": "2.1.6",
     "Win2D.uwp": "1.17.0",
