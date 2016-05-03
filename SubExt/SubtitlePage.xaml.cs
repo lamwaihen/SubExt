@@ -119,12 +119,8 @@ namespace SubExt
             {
                 CanvasDevice device = new CanvasDevice();
                 CanvasRenderTarget renderer = null;
-                CanvasTextFormat font = new CanvasTextFormat
-                {
-                    FontFamily = "Segoe UI",
-                    FontSize = 24
-                };
-                Rect rtSource = Rect.Empty, rtDest = Rect.Empty;
+                CanvasTextFormat font = null;
+                Rect rtSource = Rect.Empty, rtDest = Rect.Empty, rtText = Rect.Empty;
 
                 for (int i = 0; i < p.VideoFrames.Count; i++)
                 {
@@ -133,16 +129,18 @@ namespace SubExt
                         CanvasBitmap bitmap = await CanvasBitmap.LoadAsync(device, stream);
 
                         if (rtSource.IsEmpty)
-                            rtSource = new Rect(0, 0, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
+                            rtSource = rtText = rtDest = new Rect(0, 0, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
                         if (renderer == null)
                             renderer = new CanvasRenderTarget(device, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height * 2 * p.VideoFrames.Count, bitmap.Dpi);
+                        if (font == null)
+                            font = new CanvasTextFormat { FontFamily = "Segoe UI", FontSize = (bitmap.SizeInPixels.Height - 2) * 76 / bitmap.Dpi };
 
                         using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
                         {
-                            rtDest = new Rect(0, bitmap.SizeInPixels.Height * i * 2, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
-                            ds.FillRectangle(rtDest, Colors.White);
-                            ds.DrawText(string.Format("#{0}", i), rtDest, Colors.Black, font);
-                            rtDest.Y += bitmap.SizeInPixels.Height;
+                            rtText.Y = bitmap.SizeInPixels.Height * i * 2;
+                            ds.FillRectangle(rtText, Colors.White);
+                            ds.DrawText(string.Format("#{0}", i), rtText, Colors.Black, font);
+                            rtDest.Y = (bitmap.SizeInPixels.Height * i * 2) + bitmap.SizeInPixels.Height;
                             ds.DrawImage(bitmap, rtDest, rtSource);
                         }
                     }
