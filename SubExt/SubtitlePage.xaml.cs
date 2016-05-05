@@ -32,8 +32,6 @@ namespace SubExt
     {
         private Payload p;
 
-        static string[] Scopes = { DriveService.Scope.DriveFile };
-        static string ApplicationName = "Subtitle Extractor";
         public SubtitlePage()
         {
             this.InitializeComponent();
@@ -163,60 +161,46 @@ namespace SubExt
         private async void buttonStartOcr_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
             UserCredential credential = null;
-
-            //using (var stream = new FileStream("client_secret.json", FileMode.Open, FileAccess.Read))
+            try
             {
-                string credPath = ApplicationData.Current.TemporaryFolder.Path;
-                credPath = Path.Combine(credPath, ".credentials/drive-dotnet-quickstart.json");
-
-                ClientSecrets cs = new ClientSecrets
-                {
-                    ClientId = "your clientId",
-                    ClientSecret = "your clientSecret"
-                };
-
-                try
-                {
-                    credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                new Uri("ms-appx:///Assets/client_secret.json"),
-                 new[] { DriveService.Scope.DriveFile },
-                 "user",
-                 CancellationToken.None);
-                }
-                catch (AggregateException ex)
-                {
-                    int n = 0;
-                }
-                Debug.WriteLine("Credential file saved to: " + credPath);
+                credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                    new Uri("ms-appx:///Assets/client_secret.json"), 
+                    new[] { DriveService.Scope.DriveFile }, "user", CancellationToken.None);
+            }
+            catch (AggregateException ex)
+            {
+                Debug.Write("Credential failed, " + ex.Message);
             }
 
             // Create Drive API service.
             var service = new DriveService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
-                ApplicationName = ApplicationName,
+                ApplicationName = "Subtitle Extractor",
             });
 
-            // Define parameters of request.
-            FilesResource.ListRequest listRequest = service.Files.List();
-            listRequest.PageSize = 10;
-            listRequest.Fields = "nextPageToken, files(id, name)";
+            var folderMetadata = new Google.Apis.Drive.v3.Data.File();
+            folderMetadata.Name = "Subtitles";
+            folderMetadata.MimeType = "application/vnd.google-apps.folder";
+            var request = service.Files.Create(folderMetadata);
+            request.Fields = "id";
+            var folder = request.Execute();
+            Debug.WriteLine("Folder ID: " + folder.Id);
 
-            // List files.
-            IList<Google.Apis.Drive.v3.Data.File> files = listRequest.Execute()
-                .Files;
-            Debug.WriteLine("Files:");
-            if (files != null && files.Count > 0)
+            var folderId = folder.Id;// "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
+            var fileMetadata = new Google.Apis.Drive.v3.Data.File();
+            fileMetadata.Name = "photo.jpg";
+            fileMetadata.Parents = new List<string> { folderId };
+            FilesResource.CreateMediaUpload requestUpload;
+            using (var stream = new System.IO.FileStream(p.VideoFrames[0].ImageFile.Path, System.IO.FileMode.Open)) 
             {
-                foreach (var file in files)
-                {
-                    Debug.WriteLine("{0} ({1})", file.Name, file.Id);
-                }
+                requestUpload = service.Files.Create(
+                    fileMetadata, stream, "image/jpeg");
+                requestUpload.Fields = "id";
+                requestUpload.Upload();
             }
-            else
-            {
-                Debug.WriteLine("No files found.");
-            }
+            var file = requestUpload.ResponseBody;
+            Debug.WriteLine("File ID: " + file.Id);
         }
     }
 
