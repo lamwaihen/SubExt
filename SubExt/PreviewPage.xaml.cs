@@ -138,6 +138,7 @@ namespace SubExt
 
                                     p.VideoFrames[p.VideoFrames.Count - 1].EndTime = inputSample.Timestamp;
                                 }
+                                System.Diagnostics.Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), file.Name));
                             }
                         }
                     }
@@ -291,29 +292,10 @@ namespace SubExt
                     pixels[(x + y * width) * 4 + 2] = (byte)(pixels[(x + y * width) * 4 + 2] >= 128 ? 255 : 0);
                 }
             }
-
-            //for (int y = 0; y < height; y++)
-            //{
-            //    for (int x = 0; x < width; x++)
-            //    {
-            //        if (y == 0 || y == height - 1 || x == 0 || x == width - 1)
-            //        {
-            //            FloodFill(pixels, width, height, new Point(x, y), Color.FromArgb(255, 0, 0, 0), Color.FromArgb(255, 255, 255, 255));
-            //        }
-            //    }
-            //}
-
-            //for (int i = 0; i < pixels.Length; i++)
-            //{
-            //    if (pixels[i] != 255)
-            //        return false;
-            //}
-            //return true;
         }
 
         private static bool ColorMatch(Color a, Color b)
         {
-
             return a.Equals(b);
         }
 
@@ -388,7 +370,7 @@ namespace SubExt
                 {
                     if (y == 0 || y == source.PixelHeight - 1 || x == 0 || x == source.PixelWidth - 1)
                     {
-                        FloodFill(sourcePixels, source.PixelWidth, source.PixelHeight, new Point(x, y), Color.FromArgb(255, 0, 0, 0), Color.FromArgb(255, 255, 255, 255));
+                        FloodFill(sourcePixels, source.PixelWidth, source.PixelHeight, new Point(x, y), Colors.Black, Colors.White);
                     }
                 }
             }
