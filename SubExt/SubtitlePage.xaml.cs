@@ -165,7 +165,7 @@ namespace SubExt
             {
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
                     new Uri("ms-appx:///Assets/client_secret.json"), 
-                    new[] { DriveService.Scope.DriveFile }, "user", CancellationToken.None);
+                    new[] { DriveService.Scope.DriveAppdata }, "user", CancellationToken.None);
             }
             catch (AggregateException ex)
             {
@@ -188,19 +188,34 @@ namespace SubExt
             Debug.WriteLine("Folder ID: " + folder.Id);
 
             var folderId = folder.Id;// "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
-            var fileMetadata = new Google.Apis.Drive.v3.Data.File();
-            fileMetadata.Name = "photo.jpg";
-            fileMetadata.Parents = new List<string> { folderId };
-            FilesResource.CreateMediaUpload requestUpload;
-            using (var stream = new System.IO.FileStream(p.VideoFrames[0].ImageFile.Path, System.IO.FileMode.Open)) 
+            foreach (VideoFrame frame in p.VideoFrames)
             {
-                requestUpload = service.Files.Create(
-                    fileMetadata, stream, "image/jpeg");
-                requestUpload.Fields = "id";
-                requestUpload.Upload();
-            }
-            var file = requestUpload.ResponseBody;
-            Debug.WriteLine("File ID: " + file.Id);
+                var fileMetadata = new Google.Apis.Drive.v3.Data.File();
+                fileMetadata.Name = frame.ImageFile.Name;
+                fileMetadata.Parents = new List<string> { folderId };
+                FilesResource.CreateMediaUpload requestUpload;
+                using (var stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
+                {
+                    requestUpload = service.Files.Create(
+                        fileMetadata, stream, "image/jpeg");
+                    requestUpload.Fields = "id";
+                    requestUpload.Upload();
+                }
+                var imgFile = requestUpload.ResponseBody;
+                Debug.WriteLine("File ID: " + imgFile.Id);
+
+                var textMetadata = new Google.Apis.Drive.v3.Data.File();
+                textMetadata.Name = frame.ImageFile.Name;
+                textMetadata.Parents = new List<string> { folderId };
+                textMetadata.MimeType = "application/vnd.google-apps.document";
+                FilesResource.CopyRequest requestCopy = service.Files.Copy(textMetadata, imgFile.Id);
+                requestCopy.Fields = "id";
+                requestCopy.OcrLanguage = "zh";
+                var textFile = requestCopy.Execute();
+
+                FilesResource.ExportRequest requestExport = service.Files.Export(textFile.Id, "text/plain");
+                frame.Subtitle = requestExport.Execute();
+            }        
         }
     }
 
