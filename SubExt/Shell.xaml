@@ -1,0 +1,20 @@
+﻿<Page
+    x:Class="SubExt.Shell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SubExt"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <SplitView x:Name="splitViewMenu" IsPaneOpen="False" CompactPaneLength="50" OpenPaneLength="250" DisplayMode="CompactInline" PanePlacement="Left" Content="{Binding}" PaneBackground="#FF206396">
+        <SplitView.Pane>
+            <StackPanel>
+                <RadioButton x:Name="radioButtonHamburger" Click="radioButtonHamburger_Click" Style="{StaticResource NavRadioButtonStyle}" Tag="&#xE700;" Content="Menu" GroupName="Hamburger"/>
+                <RadioButton x:Name="radioButtonHome" Click="radioButtonHome_Click" Style="{StaticResource NavRadioButtonStyle}" Tag="&#xE80F;" Content="Home" GroupName="Navigation"/>
+                <RadioButton x:Name="radioButtonPreview" Click="radioButtonPreview_Click" Style="{StaticResource NavRadioButtonStyle}" Tag="&#xE75A;" Content="Preview" GroupName="Navigation"/>
+                <RadioButton x:Name="radioButtonSubtitle" Click="radioButtonSubtitle_Click" Style="{StaticResource NavRadioButtonStyle}" Tag="&#xE18F;" Content="Subitle" GroupName="Navigation"/>
+            </StackPanel>
+        </SplitView.Pane>
+    </SplitView>
+</Page>

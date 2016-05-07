@@ -50,24 +50,28 @@ namespace SubExt
             }
 #endif
 
-            Frame rootFrame = Window.Current.Content as Frame;
+            Shell shell = Window.Current.Content as Shell;
+            Frame rootFrame = null;
 
-            // Do not repeat app initialization when the Window already has content,
-            // just ensure that the window is active
-            if (rootFrame == null)
+            if (shell == null)
             {
-                // Create a Frame to act as the navigation context and navigate to the first page
-                rootFrame = new Frame();
+                shell = new Shell();
 
-                rootFrame.NavigationFailed += OnNavigationFailed;
-
-                if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
+                if (rootFrame == null)
                 {
-                    //TODO: Load state from previously suspended application
+                    rootFrame = new Frame();
+                    rootFrame.Language = Windows.Globalization.ApplicationLanguages.Languages[0];
+
+                    rootFrame.NavigationFailed += OnNavigationFailed;
+
+                    if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
+                    {
+                    }
                 }
 
-                // Place the frame in the current Window
-                Window.Current.Content = rootFrame;
+                shell.DataContext = rootFrame;
+
+                Window.Current.Content = shell;
             }
 
             if (rootFrame.Content == null)
