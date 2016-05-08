@@ -1,5 +1,6 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
+using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
@@ -8,7 +9,6 @@ using SubExt.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using Windows.Storage;
 using Windows.Foundation;
@@ -39,7 +39,8 @@ namespace SubExt
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             p = e.Parameter as Payload;
-            ItemViewOnPage.DataContext = p.VideoFrames;
+            if (p?.VideoFrames != null)
+                ItemViewOnPage.DataContext = p.VideoFrames;
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
@@ -165,7 +166,7 @@ namespace SubExt
             {
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
                     new Uri("ms-appx:///Assets/client_secret.json"), 
-                    new[] { DriveService.Scope.DriveAppdata }, "user", CancellationToken.None);
+                    new[] { DriveService.Scope.DriveFile }, "user", CancellationToken.None);
             }
             catch (AggregateException ex)
             {
@@ -173,49 +174,57 @@ namespace SubExt
             }
 
             // Create Drive API service.
-            var service = new DriveService(new BaseClientService.Initializer()
+            DriveService service = new DriveService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Subtitle Extractor",
             });
 
-            var folderMetadata = new Google.Apis.Drive.v3.Data.File();
-            folderMetadata.Name = "Subtitles";
+            // First create the folder
+            File folderMetadata = new File();
+            folderMetadata.Name = p.Video.Name;
             folderMetadata.MimeType = "application/vnd.google-apps.folder";
-            var request = service.Files.Create(folderMetadata);
-            request.Fields = "id";
-            var folder = request.Execute();
+            //folderMetadata.Parents = new List<string>() { "appDataFolder" };
+            FilesResource.CreateRequest requestCreate = service.Files.Create(folderMetadata);
+            requestCreate.Fields = "id";
+            File folder = await requestCreate.ExecuteAsync();
             Debug.WriteLine("Folder ID: " + folder.Id);
 
-            var folderId = folder.Id;// "0BwwA4oUTeiV1TGRPeTVjaWRDY1E";
             foreach (VideoFrame frame in p.VideoFrames)
             {
-                var fileMetadata = new Google.Apis.Drive.v3.Data.File();
+                // First upload the image file
+                File fileMetadata = new File();
                 fileMetadata.Name = frame.ImageFile.Name;
-                fileMetadata.Parents = new List<string> { folderId };
+                fileMetadata.Parents = new List<string> { folder.Id };
                 FilesResource.CreateMediaUpload requestUpload;
-                using (var stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
+
+                using (System.IO.FileStream stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
                 {
-                    requestUpload = service.Files.Create(
-                        fileMetadata, stream, "image/jpeg");
+                    requestUpload = service.Files.Create(fileMetadata, stream, "image/jpeg");
                     requestUpload.Fields = "id";
                     requestUpload.Upload();
                 }
-                var imgFile = requestUpload.ResponseBody;
-                Debug.WriteLine("File ID: " + imgFile.Id);
+                File imgFile = requestUpload.ResponseBody;
+                Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), imgFile.Id));
 
-                var textMetadata = new Google.Apis.Drive.v3.Data.File();
+                // Then copy the image file as document
+                File textMetadata = new File();
                 textMetadata.Name = frame.ImageFile.Name;
-                textMetadata.Parents = new List<string> { folderId };
+                textMetadata.Parents = new List<string> { folder.Id };
                 textMetadata.MimeType = "application/vnd.google-apps.document";
                 FilesResource.CopyRequest requestCopy = service.Files.Copy(textMetadata, imgFile.Id);
                 requestCopy.Fields = "id";
                 requestCopy.OcrLanguage = "zh";
-                var textFile = requestCopy.Execute();
+                File textFile = await requestCopy.ExecuteAsync();
 
+                // Finally export the document as text
                 FilesResource.ExportRequest requestExport = service.Files.Export(textFile.Id, "text/plain");
-                frame.Subtitle = requestExport.Execute();
-            }        
+                string text = await requestExport.ExecuteAsync();
+                frame.Subtitle = text.Substring(text.LastIndexOf("\r\n\r\n") + 4);
+            }
+
+            FilesResource.DeleteRequest requestDelete = service.Files.Delete(folder.Id);
+            string result = await requestDelete.ExecuteAsync();
         }
     }
 
