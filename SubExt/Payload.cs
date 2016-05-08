@@ -44,7 +44,13 @@ namespace SubExt.ViewModel
                 SubtitleUIRect = new Rect(
                     _subtitleRect.X / aspectRatio.Width + _videoPreview.Left, _subtitleRect.Y / aspectRatio.Height + _videoPreview.Top,
                     _subtitleRect.Width / aspectRatio.Width, _subtitleRect.Height / aspectRatio.Height);
-            }
+
+                // Write this rect to settings
+                if (ApplicationData.Current.LocalSettings.Values.ContainsKey(_videoSize.ToString()))
+                    ApplicationData.Current.LocalSettings.Values[_videoSize.ToString()] = _subtitleRect;
+                else
+                    ApplicationData.Current.LocalSettings.Values.Add(_videoSize.ToString(), _subtitleRect);
+            }    
         }
         private Rect _subtitleRect;
         public Rect SubtitleUIRect

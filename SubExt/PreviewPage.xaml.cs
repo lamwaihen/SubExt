@@ -231,6 +231,8 @@ namespace SubExt
             using (var mediaResult = await m_mediaReader.VideoStream.ReadAsync())
             {
                 MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
+                if (p.VideoSize.Width == 0)
+                    p.VideoSize = new Size(inputSample.Width, inputSample.Height);
 
                 double uar = swapChainPanelTarget.ActualWidth / swapChainPanelTarget.ActualHeight; // Aspect ratio of UI
                 double par = (double)inputSample.Width / inputSample.Height;    // Aspect ratio of video
@@ -245,7 +247,11 @@ namespace SubExt
                     double width = swapChainPanelTarget.ActualHeight * par;
                     p.VideoPreview = new Rect((swapChainPanelTarget.ActualWidth - width) / 2, 0, width, swapChainPanelTarget.ActualHeight);
                 }
-             }
+
+                // Try to read from settings
+                if (ApplicationData.Current.LocalSettings.Values.ContainsKey(p.VideoSize.ToString()))
+                    p.SubtitleRect = (Rect)ApplicationData.Current.LocalSettings.Values[p.VideoSize.ToString()];
+            }
         }
         private double CompareFrames(byte[] img1, byte[] img2)
         {
@@ -389,9 +395,6 @@ namespace SubExt
                 using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
                 {
                     MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
-                    if (p.VideoSize.Width == 0)
-                        p.VideoSize = new Size(inputSample.Width, inputSample.Height);
-
                     using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
                     {
                         // Wrap MediaBuffer2D in Bitmap
