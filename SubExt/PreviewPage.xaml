@@ -9,6 +9,7 @@
 
     <Page.Resources>
         <local:SubtitleRectFormatter x:Key="SubtitleRectFormatter"/>
+        <local:SubtitleUIRectFormatter x:Key="SubtitleUIRectFormatter"/>
     </Page.Resources>
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -18,7 +19,11 @@
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0">
             <Canvas x:Name="canvasPreview">
-                <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1"/>
+                <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1" 
+                           Width="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=W}" 
+                           Height="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=H}"
+                           Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=X}"
+                           Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=Y}"/>
                 <SwapChainPanel x:Name="swapChainPanelTarget" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
             </Canvas>
             <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>

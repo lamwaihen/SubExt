@@ -5,6 +5,7 @@ using Lumia.Imaging.Transforms;
 using MediaCaptureReader;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
@@ -32,7 +33,6 @@ namespace SubExt
     {
         public Payload p = new Payload();
         private Point m_ptRegionStart;
-        private Rect m_rectPreview;
 
         private SwapChainPanelRenderer m_renderer;
         private MediaReader m_mediaReader;
@@ -40,7 +40,7 @@ namespace SubExt
         private byte[] m_previousFrame;
         public PreviewPage()
         {
-            this.InitializeComponent();
+            InitializeComponent();
             m_isRendering = false;
 
             swapChainPanelTarget.Loaded += swapChainPanelTarget_Loaded;
@@ -51,7 +51,6 @@ namespace SubExt
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            //p.Region = new Rect(Canvas.GetLeft(rectRegion), Canvas.GetTop(rectRegion), rectRegion.ActualWidth, rectRegion.ActualHeight);
         }
 
         private async void buttonProceed_Click(object sender, RoutedEventArgs e)
@@ -138,7 +137,7 @@ namespace SubExt
 
                                     p.VideoFrames[p.VideoFrames.Count - 1].EndTime = inputSample.Timestamp;
                                 }
-                                System.Diagnostics.Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), file.Name));
+                                Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), file.Name));
                             }
                         }
                     }
@@ -189,15 +188,14 @@ namespace SubExt
 
             PointerPoint ptrPt = e.GetCurrentPoint(swapChainPanelTarget);
             m_ptRegionStart = ptrPt.Position;
-            if (!m_rectPreview.Contains(m_ptRegionStart))
+            if (!p.VideoPreview.Contains(m_ptRegionStart))
                 return;
 
             // Initialize the rectangle.
             // Set border color and width
             rectRegion.Visibility = Visibility.Visible;
 
-            Canvas.SetLeft(rectRegion, m_ptRegionStart.X);
-            Canvas.SetTop(rectRegion, m_ptRegionStart.X);
+            p.SubtitleUIRect = new Rect(m_ptRegionStart.X, m_ptRegionStart.Y, 0, 0);
         }
         private void swapChainPanelTarget_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
@@ -215,22 +213,11 @@ namespace SubExt
             var w = Math.Max(pos.X, m_ptRegionStart.X) - x;
             var h = Math.Max(pos.Y, m_ptRegionStart.Y) - y;
 
-            rectRegion.Width = w;
-            rectRegion.Height = h;
-
-            Canvas.SetLeft(rectRegion, x);
-            Canvas.SetTop(rectRegion, y);
-
-            w = p.OriginalSize.Width / m_rectPreview.Width;
-            h = p.OriginalSize.Height / m_rectPreview.Height;
-            p.SubtitleRect = new Rect((Canvas.GetLeft(rectRegion) - m_rectPreview.Left) * w, (Canvas.GetTop(rectRegion) - m_rectPreview.Top) * h, rectRegion.ActualWidth * w, rectRegion.ActualHeight * h);
+            p.SubtitleUIRect = new Rect(x, y, w, h);
         }
         private void swapChainPanelTarget_PointerReleased(object sender, PointerRoutedEventArgs e)
         {            
             m_ptRegionStart = new Point(0, 0);
-            double w = p.OriginalSize.Width / m_rectPreview.Width;
-            double h = p.OriginalSize.Height / m_rectPreview.Height;
-            p.SubtitleRect = new Rect((Canvas.GetLeft(rectRegion) - m_rectPreview.Left) * w, (Canvas.GetTop(rectRegion) - m_rectPreview.Top) * h, rectRegion.ActualWidth * w, rectRegion.ActualHeight * h);
         }
 
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -250,13 +237,13 @@ namespace SubExt
 
                 if (par > uar)
                 {
-                    double height = (double)swapChainPanelTarget.ActualWidth / par;
-                    m_rectPreview = new Rect(0, (double)(swapChainPanelTarget.ActualHeight - height) / 2, swapChainPanelTarget.ActualWidth, height);
+                    double height = swapChainPanelTarget.ActualWidth / par;
+                    p.VideoPreview = new Rect(0, (swapChainPanelTarget.ActualHeight - height) / 2, swapChainPanelTarget.ActualWidth, height);
                 }
                 else
                 {
-                    double width = (double)swapChainPanelTarget.ActualHeight * par;
-                    m_rectPreview = new Rect((double)(swapChainPanelTarget.ActualWidth - width) / 2, 0, width, swapChainPanelTarget.ActualHeight);
+                    double width = swapChainPanelTarget.ActualHeight * par;
+                    p.VideoPreview = new Rect((swapChainPanelTarget.ActualWidth - width) / 2, 0, width, swapChainPanelTarget.ActualHeight);
                 }
              }
         }
@@ -349,7 +336,7 @@ namespace SubExt
         }
         private async void OpenPreviewVideo()
         {
-            if (p.Video != null)
+            if (p?.Video != null)
             {
                 m_mediaReader = await MediaReader.CreateFromFileAsync(p.Video);
                 sldPreview.Maximum = m_mediaReader.Duration.TotalMilliseconds;
@@ -402,8 +389,8 @@ namespace SubExt
                 using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
                 {
                     MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
-                    if (p.OriginalSize.Width == 0)
-                        p.OriginalSize = new Size(inputSample.Width, inputSample.Height);
+                    if (p.VideoSize.Width == 0)
+                        p.VideoSize = new Size(inputSample.Width, inputSample.Height);
 
                     using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
                     {
@@ -480,6 +467,34 @@ namespace SubExt
                 _rt.Height = double.Parse(value as string);
 
             return _rt;
+        }
+    }
+
+    public class SubtitleUIRectFormatter : IValueConverter
+    { 
+        private Rect _rt;
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value != null)
+            {
+                _rt = (Rect)value;
+                string param = parameter as string;
+                if (param == "X")
+                    return _rt.X;
+                else if (param == "Y")
+                    return _rt.Y;
+                else if (param == "W")
+                    return _rt.Width;
+                else if (param == "H")
+                    return _rt.Height;
+            }
+
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
         }
     }
 }

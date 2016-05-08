@@ -18,13 +18,51 @@ namespace SubExt.ViewModel
         public event PropertyChangedEventHandler PropertyChanged;
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
         public StorageFile Video { get; set; }
-        public Size OriginalSize { get; set; }
+        public Size VideoSize
+        {
+            get { return _videoSize; }
+            set { _videoSize = value; RaisePropertyChanged(); }
+        }
+        private Size _videoSize;
+        public Rect VideoPreview
+        {
+            get { return _videoPreview; }
+            set { _videoPreview = value; RaisePropertyChanged(); }
+        }
+        private Rect _videoPreview;
         public Rect SubtitleRect
         {
             get { return _subtitleRect; }
-            set { _subtitleRect = value; RaisePropertyChanged(); }
+            set
+            {
+                if (_subtitleRect.Equals(value))
+                    return;
+                _subtitleRect = value;
+                RaisePropertyChanged();
+
+                Size aspectRatio = new Size(_videoSize.Width / _videoPreview.Width, _videoSize.Height / _videoPreview.Height);
+                SubtitleUIRect = new Rect(
+                    _subtitleRect.X / aspectRatio.Width + _videoPreview.Left, _subtitleRect.Y / aspectRatio.Height + _videoPreview.Top,
+                    _subtitleRect.Width / aspectRatio.Width, _subtitleRect.Height / aspectRatio.Height);
+            }
         }
         private Rect _subtitleRect;
+        public Rect SubtitleUIRect
+        {
+            get { return _subtitleUIRect; }
+            set
+            {
+                if (_subtitleUIRect.Equals(value))
+                    return;
+                _subtitleUIRect = value;
+                RaisePropertyChanged();
+
+                Size aspectRatio = new Size(_videoSize.Width / _videoPreview.Width, _videoSize.Height / _videoPreview.Height);
+                SubtitleRect = new Rect((_subtitleUIRect.Left - _videoPreview.Left) * aspectRatio.Width, (_subtitleUIRect.Top - _videoPreview.Top) * aspectRatio.Height,
+                    _subtitleUIRect.Width * aspectRatio.Width, _subtitleUIRect.Height * aspectRatio.Height);
+            }
+        }
+        private Rect _subtitleUIRect;
         public int StampSmoothness { get; set; }
         public double StampThreshold { get; set; }
 
