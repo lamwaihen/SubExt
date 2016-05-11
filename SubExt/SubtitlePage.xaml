@@ -18,6 +18,12 @@
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid x:Name="gridEdit" Grid.Row="0" Canvas.ZIndex="1" Margin="40" Visibility="Collapsed">            
+            <StackPanel Margin="0" Background="Red">
+                <Button x:Name="buttonCloseSelctedImage"  Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
+                <Image x:Name="imageEdit" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>
+            </StackPanel>
+        </Grid>
         <ListBox x:Name="ItemViewOnPage" Grid.Row="0" ItemsSource="{Binding}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
@@ -30,7 +36,7 @@
                             <TextBlock x:Name="textBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }}"/>
                             <TextBlock x:Name="textBlockSep" Text=" --> " RelativePanel.RightOf="textBeginTime"/>
                             <TextBlock x:Name="textEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }}" RelativePanel.RightOf="textBlockSep"/>
-                            <Image Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" RelativePanel.Below="textBeginTime"/>
+                            <Image x:Name="imageSubtitle" Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" RelativePanel.Below="textBeginTime" DoubleTapped="imageSubtitle_DoubleTapped"/>
                         </RelativePanel>
                         <RelativePanel Grid.Column="1">
                             <Button x:Name="buttonInsert" Content="Insert" Margin="4" Click="buttonInsert_Click"/>

@@ -9,14 +9,19 @@ using SubExt.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using Windows.Storage;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
+using Windows.UI.Input;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
+using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI;
@@ -31,6 +36,8 @@ namespace SubExt
     public sealed partial class SubtitlePage : Page
     {
         private Payload p;
+
+        private byte[] m_pixels;
 
         public SubtitlePage()
         {
@@ -47,7 +54,7 @@ namespace SubExt
             
         }
 
-        private void buttonInsert_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void buttonInsert_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
             VideoFrame frame = item.DataContext as VideoFrame;
@@ -61,7 +68,7 @@ namespace SubExt
             p.VideoFrames.Insert(curIdx, frameNew);
         }
 
-        private void buttonMergeUp_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void buttonMergeUp_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
             VideoFrame frame = item.DataContext as VideoFrame;
@@ -72,7 +79,7 @@ namespace SubExt
             p.VideoFrames.Remove(framePrev);
         }
 
-        private void buttonMergeDown_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void buttonMergeDown_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
             VideoFrame frame = item.DataContext as VideoFrame;
@@ -83,13 +90,13 @@ namespace SubExt
             p.VideoFrames.Remove(frameNext);
         }
 
-        private void buttonDelete_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void buttonDelete_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
             p.VideoFrames.Remove(item.DataContext as VideoFrame);
         }
 
-        private async void buttonSaveAsSrt_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private async void buttonSaveAsSrt_Click(object sender, RoutedEventArgs e)
         {
             FileSavePicker savePicker = new FileSavePicker();
             savePicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
@@ -111,7 +118,7 @@ namespace SubExt
             }
         }
 
-        private async void buttonSaveAsImg_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private async void buttonSaveAsImg_Click(object sender, RoutedEventArgs e)
         {
             FileSavePicker savePicker = new FileSavePicker();
             savePicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
@@ -159,7 +166,7 @@ namespace SubExt
             }
         }
 
-        private async void buttonStartOcr_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private async void buttonStartOcr_Click(object sender, RoutedEventArgs e)
         {
             UserCredential credential = null;
             try
@@ -200,7 +207,7 @@ namespace SubExt
 
                 using (System.IO.FileStream stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
                 {
-                    requestUpload = service.Files.Create(fileMetadata, stream, "image/jpeg");
+                    requestUpload = service.Files.Create(fileMetadata, stream, "image/bmp");
                     requestUpload.Fields = "id";
                     requestUpload.Upload();
                 }
@@ -225,6 +232,56 @@ namespace SubExt
 
             FilesResource.DeleteRequest requestDelete = service.Files.Delete(folder.Id);
             string result = await requestDelete.ExecuteAsync();
+        }
+
+        private void buttonCloseSelctedImage_Click(object sender, RoutedEventArgs e)
+        {
+            p.SelectedImageFile = null;
+            gridEdit.Visibility = Visibility.Collapsed;
+        }
+
+        private void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            Image i = sender as Image;
+            VideoFrame f = i.DataContext as VideoFrame;
+            p.SelectedImageFile = f.ImageFile;
+
+            gridEdit.Visibility = Visibility.Visible; 
+        }
+
+        private async void imageEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            PointerPoint ptrPt = e.GetCurrentPoint(imageEdit);
+            Image img = sender as Image;
+            BitmapSource bmp = img.Source as BitmapSource;
+            Point ptSource = new Point((uint)(bmp.PixelWidth / img.ActualWidth * ptrPt.Position.X), (uint)(bmp.PixelHeight / img.ActualHeight * ptrPt.Position.Y));
+
+            Helper.FloodFill(m_pixels, bmp.PixelWidth, bmp.PixelHeight, ptSource, Colors.Black, Colors.White);
+
+            StorageFile file = p.SelectedImageFile;
+            p.SelectedImageFile = null;
+            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                var propertySet = new BitmapPropertySet();
+                propertySet.Add("ImageQuality", new BitmapTypedValue(1.0, PropertyType.Single));
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.BmpEncoderId, stream);
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
+                    (uint)bmp.PixelWidth, (uint)bmp.PixelHeight,
+                    96.0, 96.0, m_pixels);
+                await encoder.FlushAsync();
+                p.SelectedImageFile = file;
+            }
+        }        
+        private async void imageEdit_ImageOpened(object sender, RoutedEventArgs e)
+        {
+            using (IRandomAccessStream stream = await p.SelectedImageFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                Image img = sender as Image;
+                BitmapSource bmp = img.Source as BitmapSource;
+                WriteableBitmap wb = new WriteableBitmap(bmp.PixelWidth, bmp.PixelHeight);
+                await wb.SetSourceAsync(stream);
+                m_pixels = wb.PixelBuffer.ToArray();
+            }
         }
     }
 

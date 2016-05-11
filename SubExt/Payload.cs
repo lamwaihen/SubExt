@@ -71,6 +71,13 @@ namespace SubExt.ViewModel
         private Rect _subtitleUIRect;
         public int StampSmoothness { get; set; }
         public double StampThreshold { get; set; }
+        public StorageFile SelectedImageFile
+        {
+            get { return _selectedImageFile; }
+            set { _selectedImageFile = value; RaisePropertyChanged(); }
+        }
+        private StorageFile _selectedImageFile;
+
 
         private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
         {

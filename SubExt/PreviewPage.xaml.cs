@@ -101,12 +101,12 @@ namespace SubExt
                                 byte[] pixels = PostProcessing(WB);
                                 if (pixels != null)
                                 {
-                                    file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".jpg", CreationCollisionOption.ReplaceExisting);
+                                    file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".bmp", CreationCollisionOption.ReplaceExisting);
                                     using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
                                     {
                                         var propertySet = new BitmapPropertySet();
                                         propertySet.Add("ImageQuality", new BitmapTypedValue(1.0, PropertyType.Single));
-                                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, propertySet);
+                                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.BmpEncoderId, stream);
                                         encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
                                             (uint)WB.PixelWidth, (uint)WB.PixelHeight,
                                             96.0, 96.0, pixels);
@@ -127,7 +127,7 @@ namespace SubExt
                                     string filename = file.Name;
                                     int pos = filename.LastIndexOf("-");
                                     if (pos > 0)
-                                        filename = filename.Substring(0, pos + 1) + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".jpg";
+                                        filename = filename.Substring(0, pos + 1) + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".bmp";
                                     else
                                     {
                                         string sub = filename.Substring(0, filename.LastIndexOf("."));
@@ -286,60 +286,6 @@ namespace SubExt
                 }
             }
         }
-
-        private static bool ColorMatch(Color a, Color b)
-        {
-            return a.Equals(b);
-        }
-
-        private static Color GetPixel(byte[] pixels, int width, double x, double y)
-        {
-            byte a, r, g, b;
-            b = pixels[(int)(x + y * width) * 4];
-            g = pixels[(int)(x + y * width) * 4 + 1];
-            r = pixels[(int)(x + y * width) * 4 + 2];
-            a = pixels[(int)(x + y * width) * 4 + 3];
-            return Color.FromArgb(a, r, g, b);
-        }
-
-        private static void SetPixel(byte[] pixels, int width, double x, double y, Color c)
-        {
-            pixels[(int)(x + y * width) * 4] = c.B;
-            pixels[(int)(x + y * width) * 4 + 1] = c.G;
-            pixels[(int)(x + y * width) * 4 + 2] = c.R;
-            pixels[(int)(x + y * width) * 4 + 3] = c.A;
-        }
-
-        static void FloodFill(byte[] pixels, int width, int height, Point pt, Color targetColor, Color replacementColor)
-        {
-            Queue<Point> q = new Queue<Point>();
-            q.Enqueue(pt);
-            while (q.Count > 0)
-            {
-                Point n = q.Dequeue();
-                if (!ColorMatch(GetPixel(pixels, width, n.X, n.Y), targetColor))
-                    continue;
-                Point w = n, e = new Point(n.X + 1, n.Y);
-                while ((w.X >= 0) && ColorMatch(GetPixel(pixels, width, w.X, w.Y), targetColor))
-                {
-                    SetPixel(pixels, width, w.X, w.Y, replacementColor);
-                    if ((w.Y > 0) && ColorMatch(GetPixel(pixels, width, w.X, w.Y - 1), targetColor))
-                        q.Enqueue(new Point(w.X, w.Y - 1));
-                    if ((w.Y < height - 1) && ColorMatch(GetPixel(pixels, width, w.X, w.Y + 1), targetColor))
-                        q.Enqueue(new Point(w.X, w.Y + 1));
-                    w.X--;
-                }
-                while ((e.X <= width - 1) && ColorMatch(GetPixel(pixels, width, e.X, e.Y), targetColor))
-                {
-                    SetPixel(pixels, width, e.X, e.Y, replacementColor);
-                    if ((e.Y > 0) && ColorMatch(GetPixel(pixels, width, e.X, e.Y - 1), targetColor))
-                        q.Enqueue(new Point(e.X, e.Y - 1));
-                    if ((e.Y < height - 1) && ColorMatch(GetPixel(pixels, width, e.X, e.Y + 1), targetColor))
-                        q.Enqueue(new Point(e.X, e.Y + 1));
-                    e.X++;
-                }
-            }
-        }
         private async void OpenPreviewVideo()
         {
             if (p?.Video != null)
@@ -363,7 +309,7 @@ namespace SubExt
                 {
                     if (y == 0 || y == source.PixelHeight - 1 || x == 0 || x == source.PixelWidth - 1)
                     {
-                        FloodFill(sourcePixels, source.PixelWidth, source.PixelHeight, new Point(x, y), Colors.Black, Colors.White);
+                        Helper.FloodFill(sourcePixels, source.PixelWidth, source.PixelHeight, new Point(x, y), Colors.Black, Colors.White);
                     }
                 }
             }
