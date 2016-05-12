@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <SplitView x:Name="splitViewMenu" IsPaneOpen="False" CompactPaneLength="50" OpenPaneLength="250" DisplayMode="CompactInline" PanePlacement="Left" Content="{Binding}" PaneBackground="#FF206396">
+    <SplitView x:Name="splitViewMenu" IsPaneOpen="False" CompactPaneLength="48" OpenPaneLength="256" DisplayMode="CompactInline" PanePlacement="Left" Content="{Binding}" PaneBackground="#FF206396">
         <SplitView.Pane>
             <StackPanel>
                 <RadioButton x:Name="radioButtonHamburger" Click="radioButtonHamburger_Click" Style="{StaticResource NavRadioButtonStyle}" Tag="&#xE700;" Content="Menu" GroupName="Hamburger"/>

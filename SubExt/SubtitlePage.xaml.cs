@@ -4,6 +4,8 @@ using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
+using Microsoft.Graphics.Canvas.UI;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 using SubExt.Model;
 using SubExt.ViewModel;
 using System;
@@ -11,6 +13,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
+using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
@@ -38,6 +41,8 @@ namespace SubExt
         private Payload p;
 
         private byte[] m_pixels;
+        private CanvasBitmap m_bitmapEdit;
+        private CanvasRenderTarget offscreen;
 
         public SubtitlePage()
         {
@@ -52,6 +57,12 @@ namespace SubExt
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             
+        }
+
+        void Page_Unloaded(object sender, RoutedEventArgs e)
+        {
+            this.canvasEdit.RemoveFromVisualTree();
+            this.canvasEdit = null;
         }
 
         private void buttonInsert_Click(object sender, RoutedEventArgs e)
@@ -240,13 +251,14 @@ namespace SubExt
             gridEdit.Visibility = Visibility.Collapsed;
         }
 
-        private void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        private async void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
             Image i = sender as Image;
             VideoFrame f = i.DataContext as VideoFrame;
             p.SelectedImageFile = f.ImageFile;
 
-            gridEdit.Visibility = Visibility.Visible; 
+            gridEdit.Visibility = Visibility.Visible;
+            canvasEdit.Invalidate();
         }
 
         private async void imageEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -282,6 +294,36 @@ namespace SubExt
                 await wb.SetSourceAsync(stream);
                 m_pixels = wb.PixelBuffer.ToArray();
             }
+        }
+
+        private void canvasEdit_CreateResources(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
+        {
+            // Create any resources needed by the Draw event handler.
+            // Asynchronous work can be tracked with TrackAsyncAction:
+            args.TrackAsyncAction(canvasEdit_CreateResourcesAsync(sender).AsAsyncAction());
+        }
+
+        private async Task canvasEdit_CreateResourcesAsync(CanvasControl sender)
+        {
+            //using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
+            //if (m_bitmapEdit == null)
+            //{
+            //    m_bitmapEdit = await CanvasBitmap.LoadAsync(sender, ApplicationData.Current.TemporaryFolder.Path + "\\00000533-00002769.bmp");
+            //}
+            CanvasDevice device = CanvasDevice.GetSharedDevice();
+            offscreen = new CanvasRenderTarget(device, 128, 128, 96);
+            using (CanvasDrawingSession ds = offscreen.CreateDrawingSession())
+            {
+                ds.Clear(Colors.Black);
+                ds.DrawRectangle(10, 10, 50, 60, Colors.Red);
+            }
+        }
+
+        private void canvasEdit_Draw(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.Xaml.CanvasDrawEventArgs args)
+        {
+            //Rect rtSource = new Rect(0, 0, m_bitmapEdit.SizeInPixels.Width, m_bitmapEdit.SizeInPixels.Height);
+            //            args.DrawingSession.DrawImage(m_bitmapEdit, 0, 0, rtSource);
+            args.DrawingSession.DrawImage(offscreen, 23, 34);
         }
     }
 
