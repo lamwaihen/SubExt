@@ -21,10 +21,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid x:Name="gridEdit" Grid.Row="0" Canvas.ZIndex="1" Margin="40" Visibility="Collapsed">            
-            <StackPanel Margin="0" Background="Red">
+            <StackPanel x:Name="panelEdit" Margin="0" Background="Red">
                 <Button x:Name="buttonCloseSelctedImage"  Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
-                <canvas:CanvasControl x:Name="canvasEdit" CreateResources="canvasEdit_CreateResources" Draw="canvasEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>
-                <Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>
+                <!--<canvas:CanvasControl x:Name="canvasEdit" CreateResources="canvasEdit_CreateResources" Draw="canvasEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>-->
+                <!--<Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>-->
             </StackPanel>
         </Grid>
         <ListBox x:Name="ItemViewOnPage" Grid.Row="0" ItemsSource="{Binding}">

@@ -42,7 +42,7 @@ namespace SubExt
 
         private byte[] m_pixels;
         private CanvasBitmap m_bitmapEdit;
-        private CanvasRenderTarget offscreen;
+        private CanvasControl canvasEdit;
 
         public SubtitlePage()
         {
@@ -245,10 +245,17 @@ namespace SubExt
             string result = await requestDelete.ExecuteAsync();
         }
 
-        private void buttonCloseSelctedImage_Click(object sender, RoutedEventArgs e)
+        private async void buttonCloseSelctedImage_Click(object sender, RoutedEventArgs e)
         {
+            using (IRandomAccessStream stream = await p.SelectedImageFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                await m_bitmapEdit.SaveAsync(stream, CanvasBitmapFileFormat.Bmp);
+            }
+
             p.SelectedImageFile = null;
             gridEdit.Visibility = Visibility.Collapsed;
+            this.canvasEdit.RemoveFromVisualTree();
+            this.canvasEdit = null;
         }
 
         private async void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -257,73 +264,60 @@ namespace SubExt
             VideoFrame f = i.DataContext as VideoFrame;
             p.SelectedImageFile = f.ImageFile;
 
+            double w = ActualWidth - gridEdit.Margin.Left - gridEdit.Margin.Right;
+            canvasEdit = new CanvasControl {
+                Width = w,
+                Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
+                Name = "canvasEdit"
+            };
+            canvasEdit.CreateResources += canvasEdit_CreateResources;
+            canvasEdit.Draw += canvasEdit_Draw;
+            canvasEdit.PointerPressed += canvasEdit_PointerPressed;
+            panelEdit.Children.Add(canvasEdit);
+
             gridEdit.Visibility = Visibility.Visible;
+        }
+
+        private async void canvasEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            PointerPoint ptrPt = e.GetCurrentPoint(canvasEdit);
+            Point ptSource = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasEdit.ActualHeight * ptrPt.Position.Y));
+
+            m_pixels = m_bitmapEdit.GetPixelBytes();
+            Helper.FloodFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptSource, Colors.Black, Colors.White);
+
+
+            m_bitmapEdit.SetPixelBytes(m_pixels);
             canvasEdit.Invalidate();
-        }
-
-        private async void imageEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
-        {
-            PointerPoint ptrPt = e.GetCurrentPoint(imageEdit);
-            Image img = sender as Image;
-            BitmapSource bmp = img.Source as BitmapSource;
-            Point ptSource = new Point((uint)(bmp.PixelWidth / img.ActualWidth * ptrPt.Position.X), (uint)(bmp.PixelHeight / img.ActualHeight * ptrPt.Position.Y));
-
-            Helper.FloodFill(m_pixels, bmp.PixelWidth, bmp.PixelHeight, ptSource, Colors.Black, Colors.White);
-
-            StorageFile file = p.SelectedImageFile;
-            p.SelectedImageFile = null;
-            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
-            {
-                var propertySet = new BitmapPropertySet();
-                propertySet.Add("ImageQuality", new BitmapTypedValue(1.0, PropertyType.Single));
-                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.BmpEncoderId, stream);
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
-                    (uint)bmp.PixelWidth, (uint)bmp.PixelHeight,
-                    96.0, 96.0, m_pixels);
-                await encoder.FlushAsync();
-                p.SelectedImageFile = file;
-            }
-        }        
-        private async void imageEdit_ImageOpened(object sender, RoutedEventArgs e)
-        {
-            using (IRandomAccessStream stream = await p.SelectedImageFile.OpenAsync(FileAccessMode.ReadWrite))
-            {
-                Image img = sender as Image;
-                BitmapSource bmp = img.Source as BitmapSource;
-                WriteableBitmap wb = new WriteableBitmap(bmp.PixelWidth, bmp.PixelHeight);
-                await wb.SetSourceAsync(stream);
-                m_pixels = wb.PixelBuffer.ToArray();
-            }
-        }
-
+        }  
         private void canvasEdit_CreateResources(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
         {
             // Create any resources needed by the Draw event handler.
             // Asynchronous work can be tracked with TrackAsyncAction:
             args.TrackAsyncAction(canvasEdit_CreateResourcesAsync(sender).AsAsyncAction());
         }
-
         private async Task canvasEdit_CreateResourcesAsync(CanvasControl sender)
         {
-            //using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
-            //if (m_bitmapEdit == null)
-            //{
-            //    m_bitmapEdit = await CanvasBitmap.LoadAsync(sender, ApplicationData.Current.TemporaryFolder.Path + "\\00000533-00002769.bmp");
-            //}
-            CanvasDevice device = CanvasDevice.GetSharedDevice();
-            offscreen = new CanvasRenderTarget(device, 128, 128, 96);
-            using (CanvasDrawingSession ds = offscreen.CreateDrawingSession())
+            using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
             {
-                ds.Clear(Colors.Black);
-                ds.DrawRectangle(10, 10, 50, 60, Colors.Red);
+                if (m_bitmapEdit == null)
+                {
+                    m_bitmapEdit = await CanvasBitmap.LoadAsync(sender, stream);
+                }
             }
         }
-
-        private void canvasEdit_Draw(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.Xaml.CanvasDrawEventArgs args)
+        private async void canvasEdit_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
-            //Rect rtSource = new Rect(0, 0, m_bitmapEdit.SizeInPixels.Width, m_bitmapEdit.SizeInPixels.Height);
-            //            args.DrawingSession.DrawImage(m_bitmapEdit, 0, 0, rtSource);
-            args.DrawingSession.DrawImage(offscreen, 23, 34);
+            if (m_bitmapEdit == null)
+            {
+                using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
+                {
+                    m_bitmapEdit = await CanvasBitmap.LoadAsync(sender, stream);
+                }
+            }
+            Rect rtSource = new Rect(0, 0, m_bitmapEdit.SizeInPixels.Width, m_bitmapEdit.SizeInPixels.Height);
+            Rect rtDest = new Rect(0, 0, canvasEdit.ActualWidth, canvasEdit.ActualHeight);
+            args.DrawingSession.DrawImage(m_bitmapEdit, rtDest, rtSource);
         }
     }
 
