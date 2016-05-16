@@ -5,6 +5,9 @@
     xmlns:local="using:SubExt"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:Interactivity="using:Microsoft.Xaml.Interactivity" 
+    xmlns:Interactions="using:Microsoft.Xaml.Interactions.Core"
+    xmlns:Media="using:Microsoft.Xaml.Interactions.Media"
     mc:Ignorable="d" SizeChanged="Page_SizeChanged">
 
     <Page.Resources>
@@ -43,7 +46,30 @@
             <StackPanel Grid.Row="1">
                 <CheckBox x:Name="checkBoxGrayscaleNegative" Content="Grayscale Negative" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
                 <CheckBox x:Name="checkBoxContrast" Content="Contrast" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
-                <CheckBox x:Name="checkBoxStamp" Content="Stamp" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
+                <CheckBox x:Name="checkBoxStamp" Content="Stamp" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed" IsChecked="{x:Bind Path=u.IsCheckBoxStampChecked, Mode=TwoWay}">
+                    <CheckBox.Resources>
+                        <Storyboard x:Name="FadeInStampControls">
+                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="sliderStampSmoothness" Storyboard.TargetProperty="Visibility">
+                                <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                            </ObjectAnimationUsingKeyFrames>
+                            <PopInThemeAnimation Storyboard.TargetName="sliderStampSmoothness" FromVerticalOffset="-50" FromHorizontalOffset="0" SpeedRatio="0.5"/>
+                        </Storyboard>
+                        <Storyboard x:Name="FadeOutStampControls">
+                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="sliderStampSmoothness" Storyboard.TargetProperty="Visibility">
+                                <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
+                            </ObjectAnimationUsingKeyFrames>
+                            <PopOutThemeAnimation Storyboard.TargetName="sliderStampSmoothness" SpeedRatio="0.5"/>
+                        </Storyboard>
+                    </CheckBox.Resources>
+                    <Interactivity:Interaction.Behaviors>
+                        <Interactions:DataTriggerBehavior Binding="{x:Bind Path=u.IsCheckBoxStampChecked, Mode=OneWay}" Value="True">
+                            <Media:ControlStoryboardAction Storyboard="{StaticResource FadeInStampControls}"/>
+                        </Interactions:DataTriggerBehavior>
+                        <Interactions:DataTriggerBehavior Binding="{x:Bind Path=u.IsCheckBoxStampChecked, Mode=OneWay}" Value="False">
+                            <Media:ControlStoryboardAction Storyboard="{StaticResource FadeOutStampControls}"/>
+                        </Interactions:DataTriggerBehavior>
+                    </Interactivity:Interaction.Behaviors>
+                </CheckBox>
                 <Slider x:Name="sliderStampSmoothness" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="6" TickPlacement="TopLeft" TickFrequency="1"/>
                 <Slider x:Name="sliderStampThreshold" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="1" StepFrequency="0.01" SmallChange="0.1" TickFrequency="0.05" Value="0.45" TickPlacement="TopLeft"/>
             </StackPanel>
