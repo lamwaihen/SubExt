@@ -5,7 +5,9 @@ using Lumia.Imaging.Transforms;
 using MediaCaptureReader;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
@@ -26,11 +28,21 @@ using SubExt.ViewModel;
 
 namespace SubExt
 {
+    public class PreviewUIState : INotifyPropertyChanged
+    {
+        public bool? IsCheckBoxStampChecked
+        {
+            get { return _isCheckBoxStampChecked; }
+            set { _isCheckBoxStampChecked = value.GetValueOrDefault(false); RaisePropertyChanged(); }
+        }
+        private bool _isCheckBoxStampChecked = false;
+    }
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class PreviewPage : Page
     {
+        public PreviewUIState u = new PreviewUIState();
         public Payload p = new Payload();
         private Point m_ptRegionStart;
 
@@ -38,6 +50,7 @@ namespace SubExt
         private MediaReader m_mediaReader;
         private bool m_isRendering;
         private byte[] m_previousFrame;
+
         public PreviewPage()
         {
             InitializeComponent();
@@ -154,7 +167,6 @@ namespace SubExt
             CheckBox checkBox = sender as CheckBox;
             if (checkBox == checkBoxStamp)
             {
-                sliderStampSmoothness.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
                 sliderStampThreshold.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             }
         }
