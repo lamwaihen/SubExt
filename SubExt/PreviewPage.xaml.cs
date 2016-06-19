@@ -3,13 +3,19 @@ using Lumia.Imaging.Adjustments;
 using Lumia.Imaging.Artistic;
 using Lumia.Imaging.Transforms;
 using MediaCaptureReader;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Windows.Foundation;
+using Windows.Foundation.Collections;
 using Windows.Graphics.Imaging;
+using Windows.Media.Editing;
+using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
@@ -24,18 +30,27 @@ using Windows.UI.Xaml.Navigation;
 using System.Runtime.InteropServices.WindowsRuntime;
 using SubExt.Model;
 using SubExt.ViewModel;
+using Windows.Media.Effects;
+using VideoEffects;
+
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
 namespace SubExt
 {
     public class PreviewUIState : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
         public bool? IsCheckBoxStampChecked
         {
             get { return _isCheckBoxStampChecked; }
             set { _isCheckBoxStampChecked = value.GetValueOrDefault(false); RaisePropertyChanged(); }
         }
         private bool _isCheckBoxStampChecked = false;
+
+        private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
@@ -50,136 +65,70 @@ namespace SubExt
         private MediaReader m_mediaReader;
         private bool m_isRendering;
         private byte[] m_previousFrame;
-
+        private CanvasBitmap m_bitmapFrame;
+        private IPropertySet m_previewEffectPropertySet;
         public PreviewPage()
         {
             InitializeComponent();
             m_isRendering = false;
 
-            swapChainPanelTarget.Loaded += swapChainPanelTarget_Loaded;
+            //swapChainPanelTarget.Loaded += swapChainPanelTarget_Loaded;
         }
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             p = e.Parameter as Payload;
+            OpenPreviewVideo();
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+        }
+        void Page_Unloaded(object sender, RoutedEventArgs e)
         {
         }
 
         private async void buttonProceed_Click(object sender, RoutedEventArgs e)
         {
             p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();
-             // Start from beginning
-            m_mediaReader.Seek(TimeSpan.FromMilliseconds(0));
-            // Total frames
-            Windows.Media.MediaProperties.VideoEncodingProperties v = m_mediaReader.VideoStream.GetCurrentStreamProperties();
-            int frames = (int)(((double)v.FrameRate.Numerator / v.FrameRate.Denominator) * m_mediaReader.Duration.TotalSeconds);
 
-            progressPostProcessing.Maximum = frames;
-            StorageFile file = null;
-            for (int i = 0; i < frames; i++)
-            {
-                // Read each frame
-                using (MediaReaderReadResult mediaResult = await m_mediaReader.VideoStream.ReadAsync())
-                {
-                    if (mediaResult.EndOfStream || mediaResult.Error)
-                        break;
-
-                    using (MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample)
-                    {
-                        if (inputSample == null)
-                            continue;
-
-                        using (MediaBuffer2D inputBuffer = inputSample.LockBuffer(BufferAccessMode.Read))
-                        {
-                            // Wrap MediaBuffer2D in Bitmap
-                            Bitmap inputBitmap = new Bitmap(
-                            new Size(inputSample.Width, inputSample.Height),
-                            ColorMode.Yuv420Sp,
-                            new uint[] { inputBuffer.Planes[0].Pitch, inputBuffer.Planes[1].Pitch },
-                            new IBuffer[] { inputBuffer.Planes[0].Buffer, inputBuffer.Planes[1].Buffer }
-                            );
-
-                            // Apply effect
-                            using (CropEffect cropEffect = new CropEffect(new BitmapImageSource(inputBitmap), p.SubtitleRect))
-                            using (ContrastEffect contrastEffect = new ContrastEffect(cropEffect))
-                            using (GrayscaleNegativeEffect grayscaleNegativeEffect = new GrayscaleNegativeEffect(contrastEffect))
-                            using (StampEffect stampEffect = new StampEffect(grayscaleNegativeEffect, (int)sliderStampSmoothness.Value, sliderStampThreshold.Value))
-                            {
-                                // Render to a bitmap
-                                WriteableBitmap WB = new WriteableBitmap((int)p.SubtitleRect.Width, (int)p.SubtitleRect.Height);
-                                WriteableBitmapRenderer renderer = new WriteableBitmapRenderer(stampEffect, WB);
-                                await renderer.RenderAsync();
-
-                                byte[] pixels = PostProcessing(WB);
-                                if (pixels != null)
-                                {
-                                    file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".bmp", CreationCollisionOption.ReplaceExisting);
-                                    using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
-                                    {
-                                        var propertySet = new BitmapPropertySet();
-                                        propertySet.Add("ImageQuality", new BitmapTypedValue(1.0, PropertyType.Single));
-                                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.BmpEncoderId, stream);
-                                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore,
-                                            (uint)WB.PixelWidth, (uint)WB.PixelHeight,
-                                            96.0, 96.0, pixels);
-                                        await encoder.FlushAsync();
-
-                                        VideoFrame frame = new VideoFrame()
-                                        {
-                                            BeginTime = inputSample.Timestamp,
-                                            EndTime = inputSample.Timestamp,
-                                            ImageFile = file,
-                                            ImageSize = new Size(WB.PixelWidth, WB.PixelHeight)   
-                                        };
-                                        p.VideoFrames.Add(frame);
-                                    }
-                                }
-                                else
-                                {
-                                    string filename = file.Name;
-                                    int pos = filename.LastIndexOf("-");
-                                    if (pos > 0)
-                                        filename = filename.Substring(0, pos + 1) + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".bmp";
-                                    else
-                                    {
-                                        string sub = filename.Substring(0, filename.LastIndexOf("."));
-                                        filename = sub + "-" + ((int)inputSample.Timestamp.TotalMilliseconds).ToString("D8") + ".jpg";
-                                    }
-                                    await file.RenameAsync(filename, NameCollisionOption.ReplaceExisting);
-
-                                    p.VideoFrames[p.VideoFrames.Count - 1].EndTime = inputSample.Timestamp;
-                                }
-                                Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), file.Name));
-                            }
-                        }
-                    }
-                }
-                progressPostProcessing.Value++;
-            }
-
-            Frame.Navigate(typeof(SubtitlePage), p);
+             var previewEffectPropertySet = new PropertySet();
+            previewEffectPropertySet["SubtitleRect"] = p.SubtitleRect;
+            previewEffectPropertySet["VideoFilename"] = p.Video.Name;
+            MediaClip clip = await MediaClip.CreateFromFileAsync(p.Video);
+            clip.VideoEffectDefinitions.Add(new VideoEffectDefinition(typeof(ExtractVideoEffect).FullName, previewEffectPropertySet));
+            VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
+            MediaComposition composition = new MediaComposition();
+            composition.Clips.Add(clip);
+            
+            mediaProceed.SetMediaStreamSource(composition.GenerateMediaStreamSource());
+            mediaProceed.Play();
         }
         private void effects_Changed(object sender, RoutedEventArgs e)
         {
-            SeekVideo(TimeSpan.FromMilliseconds(sldPreview.Value));
+            //SeekVideo(TimeSpan.FromMilliseconds(sliderPreview.Value));
 
             CheckBox checkBox = sender as CheckBox;
             if (checkBox == checkBoxStamp)
             {
+                sliderStampSmoothness.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
                 sliderStampThreshold.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             }
         }
-        private void sldPreview_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        private void sliderPreview_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
-            SeekVideo(TimeSpan.FromMilliseconds(e.NewValue));
+            //SeekVideo(TimeSpan.FromMilliseconds(e.NewValue));
+
+            // Overloaded constructor takes the arguments days, hours, minutes, seconds, miniseconds.
+            // Create a TimeSpan with miliseconds equal to the slider value.
+            TimeSpan ts = new TimeSpan(0, 0, 0, 0, (int)sliderPreview.Value);
+            mediaFrame.Position = ts;
         }
         private void sliderStamp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
-            SeekVideo(TimeSpan.FromMilliseconds(sldPreview.Value));
+            SeekVideo(TimeSpan.FromMilliseconds(sliderPreview.Value));
         }
         private void swapChainPanelTarget_Loaded(object sender, RoutedEventArgs e)
         {
+            return;
             if (swapChainPanelTarget.ActualHeight > 0 && swapChainPanelTarget.ActualWidth > 0)
             {
                 if (m_renderer == null)
@@ -234,110 +183,54 @@ namespace SubExt
 
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            canvasPreview.Height = swapChainPanelTarget.Height = (canvasPreview.Parent as StackPanel).ActualHeight - sldPreview.ActualHeight;
-            canvasPreview.Width = swapChainPanelTarget.Width = (canvasPreview.Parent as StackPanel).ActualWidth;
+            //canvasPreview.Height = mediaFrame.Height = (canvasPreview.Parent as FrameworkElement).ActualHeight - sliderPreview.ActualHeight;
+            //canvasPreview.Width = mediaFrame.Width = (canvasPreview.Parent as FrameworkElement).ActualWidth;
         }
 
-        private async void CalculateMediaRect()
+        private void CalculateMediaRect()
         {
-            using (var mediaResult = await m_mediaReader.VideoStream.ReadAsync())
+            if (p.VideoSize.Width == 0)
+                p.VideoSize = new Size(mediaFrame.NaturalVideoWidth, mediaFrame.NaturalVideoHeight);
+
+            double uar = mediaFrame.Width / mediaFrame.Height; // Aspect ratio of UI
+            double par = (double)mediaFrame.NaturalVideoWidth / mediaFrame.NaturalVideoHeight;    // Aspect ratio of video
+
+            if (par > uar)
             {
-                MediaSample2D inputSample = (MediaSample2D)mediaResult.Sample;
-                if (p.VideoSize.Width == 0)
-                    p.VideoSize = new Size(inputSample.Width, inputSample.Height);
-
-                double uar = swapChainPanelTarget.ActualWidth / swapChainPanelTarget.ActualHeight; // Aspect ratio of UI
-                double par = (double)inputSample.Width / inputSample.Height;    // Aspect ratio of video
-
-                if (par > uar)
-                {
-                    double height = swapChainPanelTarget.ActualWidth / par;
-                    p.VideoPreview = new Rect(0, (swapChainPanelTarget.ActualHeight - height) / 2, swapChainPanelTarget.ActualWidth, height);
-                }
-                else
-                {
-                    double width = swapChainPanelTarget.ActualHeight * par;
-                    p.VideoPreview = new Rect((swapChainPanelTarget.ActualWidth - width) / 2, 0, width, swapChainPanelTarget.ActualHeight);
-                }
-
-                // Try to read from settings
-                if (ApplicationData.Current.LocalSettings.Values.ContainsKey(p.VideoSize.ToString()))
-                    p.SubtitleRect = (Rect)ApplicationData.Current.LocalSettings.Values[p.VideoSize.ToString()];
+                double height = mediaFrame.Width / par;
+                p.VideoPreview = new Rect(0, (mediaFrame.Height - height) / 2, mediaFrame.Width, height);
             }
-        }
-        private double CompareFrames(byte[] img1, byte[] img2)
-        {
-            if (img2 == null)
-                return 0;
-
-            byte[] diff = new byte[img1.Length / 4];
-            for (int i = 0; i < img1.Length / 4; i++)
+            else
             {
-                // since the pixels are either black or white, only check the first byte.
-                diff[i] = (byte)(img1[i * 4] == img2[i * 4] ? 1 : 0);
+                double width = mediaFrame.Height * par;
+                p.VideoPreview = new Rect((mediaFrame.Width - width) / 2, 0, width, mediaFrame.Height);
             }
 
-            double sameCount = 0;
-            foreach (byte item in diff)
-            {
-                if (item == 1)
-                    sameCount++;
-            }
-            return sameCount / (img1.Length / 4);
-        }
-        private void ConvertToBlackWhite(byte[] pixels, int width, int height)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    // First turn all pixels to B/W
-                    pixels[(x + y * width) * 4] = (byte)(pixels[(x + y * width) * 4] >= 128 ? 255 : 0);
-                    pixels[(x + y * width) * 4 + 1] = (byte)(pixels[(x + y * width) * 4 + 1] >= 128 ? 255 : 0);
-                    pixels[(x + y * width) * 4 + 2] = (byte)(pixels[(x + y * width) * 4 + 2] >= 128 ? 255 : 0);
-                }
-            }
+            // Try to read from settings
+            if (ApplicationData.Current.LocalSettings.Values.ContainsKey(p.VideoSize.ToString()))
+                p.SubtitleRect = (Rect)ApplicationData.Current.LocalSettings.Values[p.VideoSize.ToString()];
         }
         private async void OpenPreviewVideo()
         {
             if (p?.Video != null)
             {
-                m_mediaReader = await MediaReader.CreateFromFileAsync(p.Video);
-                sldPreview.Maximum = m_mediaReader.Duration.TotalMilliseconds;
-                sldPreview.Value = 10000;
-                CalculateMediaRect();
-            }
-        }
-        private byte[] PostProcessing(WriteableBitmap source)
-        {
-            byte[] sourcePixels = source.PixelBuffer.ToArray();
-            // Change to black and white first
-            ConvertToBlackWhite(sourcePixels, source.PixelWidth, source.PixelHeight);
-
-            // Floodfile to clear the edges
-            for (int y = 0; y < source.PixelHeight; y++)
-            {
-                for (int x = 0; x < source.PixelWidth; x++)
+                try
                 {
-                    if (y == 0 || y == source.PixelHeight - 1 || x == 0 || x == source.PixelWidth - 1)
-                    {
-                        Helper.FloodFill(sourcePixels, source.PixelWidth, source.PixelHeight, new Point(x, y), Colors.Black, Colors.White);
-                    }
+                    m_previewEffectPropertySet = new PropertySet();
+
+                    MediaClip clip = await MediaClip.CreateFromFileAsync(p.Video);
+                    clip.VideoEffectDefinitions.Add(new VideoEffectDefinition(typeof(PreviewVideoEffect).FullName, m_previewEffectPropertySet));
+                    VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
+                    p.FrameRate = videoProps.FrameRate;
+                    
+                    MediaComposition composition = new MediaComposition();
+                    composition.Clips.Add(clip);
+                    mediaFrame.SetMediaStreamSource(composition.GenerateMediaStreamSource());
                 }
-            }
-
-            // Resize 
-
-
-            // Compare with previous frame
-            if (CompareFrames(sourcePixels, m_previousFrame) > 0.98)
-            {
-                return null;
-            }
-            else
-            {
-                m_previousFrame = sourcePixels;
-                return sourcePixels;
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
             }
         }
         private async void SeekVideo(TimeSpan position)
@@ -387,8 +280,72 @@ namespace SubExt
                             await m_renderer.RenderAsync();
                             m_isRendering = false;
                         }
+
+                        // Win2D
+                        if (m_bitmapFrame != null)
+                            m_bitmapFrame.Dispose();
+                        
+                        byte[] b = inputBuffer.Planes[0].Buffer.ToArray();
+                        //m_bitmapFrame = CanvasBitmap.CreateFromBytes(CanvasDevice.GetSharedDevice(), b, inputSample.Width, inputSample.Height, Windows.Graphics.DirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized);
                     }
                 }
+            }
+        }
+        
+        private void buttonPlay_Click(object sender, RoutedEventArgs e)
+        {
+            mediaFrame.Play();
+        }
+
+        private void buttonPause_Click(object sender, RoutedEventArgs e)
+        {
+            mediaFrame.Pause();
+        }
+
+        private void mediaFrame_MediaOpened(object sender, RoutedEventArgs e)
+        {
+            sliderPreview.Maximum = mediaFrame.NaturalDuration.TimeSpan.TotalMilliseconds;
+            mediaFrame.Width = canvasPreview.ActualWidth;
+            mediaFrame.Height = canvasPreview.ActualHeight;
+
+            sliderPreview.Value = 10000;
+            CalculateMediaRect();
+        }
+
+        private void M_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox t = sender as TextBox;
+            m_previewEffectPropertySet[t.Name] = Convert.ToInt16(t.Text);
+        }
+
+        private async void mediaProceed_CurrentStateChanged(object sender, RoutedEventArgs e)
+        {
+            if (mediaProceed.CurrentState == Windows.UI.Xaml.Media.MediaElementState.Paused)
+            {
+                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
+                IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
+                string[] separators = new string[] { "-", ".bmp" };
+                foreach (StorageFile file in files)
+                {
+                    string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+
+                    VideoFrame frame = new VideoFrame()
+                    {
+                        BeginTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0])),
+                        ImageFile = file
+                    };
+                    if (timestamps.Length == 1)
+                        frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0]));
+                    else
+                        frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[1]));
+
+                    Windows.Storage.FileProperties.ImageProperties imgProps = await file.Properties.GetImagePropertiesAsync();
+                    frame.ImageSize = new Size(imgProps.Width, imgProps.Height);
+                    p.VideoFrames.Add(frame);
+                    progressPostProcessing.Value++;
+                }
+
+                Frame.Navigate(typeof(SubtitlePage), p);
             }
         }
     }

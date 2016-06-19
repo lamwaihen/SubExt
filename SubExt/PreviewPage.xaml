@@ -8,6 +8,8 @@
     xmlns:Interactivity="using:Microsoft.Xaml.Interactivity" 
     xmlns:Interactions="using:Microsoft.Xaml.Interactions.Core"
     xmlns:Media="using:Microsoft.Xaml.Interactions.Media"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    Unloaded="Page_Unloaded"
     mc:Ignorable="d" SizeChanged="Page_SizeChanged">
 
     <Page.Resources>
@@ -17,20 +19,24 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
+            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="384"/>
         </Grid.ColumnDefinitions>
-        <StackPanel Grid.Column="0">
-            <Canvas x:Name="canvasPreview">
+        <RelativePanel Grid.Column="0">
+            <Canvas x:Name="canvasPreview" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignTopWithPanel="True" RelativePanel.Above="sliderPreview">
                 <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1" 
                            Width="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=W}" 
                            Height="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=H}"
                            Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=X}"
                            Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=Y}"/>
-                <SwapChainPanel x:Name="swapChainPanelTarget" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
+
+                <MediaElement x:Name="mediaFrame" Margin="8" AutoPlay="False" MediaOpened="mediaFrame_MediaOpened"  PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" RelativePanel.AlignRightWithPanel="True"/>
+                <SwapChainPanel x:Name="swapChainPanelTarget" Visibility="Collapsed" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
             </Canvas>
-            <Slider x:Name="sldPreview" Margin="12,8" ValueChanged="sldPreview_ValueChanged"/>
-        </StackPanel>
+            <Button x:Name="buttonPlay" Content="&#xE102;" Margin="8" Click="buttonPlay_Click" FontFamily="Segoe UI Symbol" RelativePanel.AlignBottomWithPanel="True"/>
+            <Button x:Name="buttonPause" Content="&#xE103;" Margin="8" Click="buttonPause_Click" FontFamily="Segoe UI Symbol" RelativePanel.RightOf="buttonPlay" RelativePanel.AlignBottomWithPanel="True"/>
+            <Slider x:Name="sliderPreview" Margin="12,8" ValueChanged="sliderPreview_ValueChanged" RelativePanel.RightOf="buttonPause" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignBottomWithPanel="True"/>
+        </RelativePanel>
         <Grid x:Name="gridControls" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -72,6 +78,33 @@
                 </CheckBox>
                 <Slider x:Name="sliderStampSmoothness" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="6" TickPlacement="TopLeft" TickFrequency="1"/>
                 <Slider x:Name="sliderStampThreshold" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="1" StepFrequency="0.01" SmallChange="0.1" TickFrequency="0.05" Value="0.45" TickPlacement="TopLeft"/>
+                <RelativePanel>
+                    <TextBox x:Name="M11" TextChanged="M_TextChanged"/>
+                    <TextBox x:Name="M21" TextChanged="M_TextChanged" RelativePanel.RightOf="M11"/>
+                    <TextBox x:Name="M31" TextChanged="M_TextChanged" RelativePanel.RightOf="M21"/>
+                    <TextBox x:Name="M41" TextChanged="M_TextChanged" RelativePanel.RightOf="M31"/>
+                    <TextBox x:Name="M51" TextChanged="M_TextChanged" RelativePanel.RightOf="M41"/>
+                    <TextBox x:Name="M12" TextChanged="M_TextChanged" RelativePanel.Below="M11"/>
+                    <TextBox x:Name="M22" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M11"/>
+                    <TextBox x:Name="M32" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M11"/>
+                    <TextBox x:Name="M42" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M11"/>
+                    <TextBox x:Name="M52" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M11"/>
+                    <TextBox x:Name="M13" TextChanged="M_TextChanged" RelativePanel.Below="M12"/>
+                    <TextBox x:Name="M23" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M12"/>
+                    <TextBox x:Name="M33" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M12"/>
+                    <TextBox x:Name="M43" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M12"/>
+                    <TextBox x:Name="M53" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M12"/>
+                    <TextBox x:Name="M14" TextChanged="M_TextChanged" RelativePanel.Below="M13"/>
+                    <TextBox x:Name="M24" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M13"/>
+                    <TextBox x:Name="M34" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M13"/>
+                    <TextBox x:Name="M44" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M13"/>
+                    <TextBox x:Name="M54" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M13"/>
+                </RelativePanel>
+                <MediaElement x:Name="mediaProceed" Width="384" Height="384" IsMuted="True" CurrentStateChanged="mediaProceed_CurrentStateChanged" AreTransportControlsEnabled="True">
+                    <MediaElement.TransportControls>
+                        <MediaTransportControls/>
+                    </MediaElement.TransportControls>
+                </MediaElement>
             </StackPanel>
             <RelativePanel Grid.Row="2">
                 <Button x:Name="buttonProceed" Content="Proceed" Margin="8" Click="buttonProceed_Click" HorizontalAlignment="Center"/>

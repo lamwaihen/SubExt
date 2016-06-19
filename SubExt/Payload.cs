@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Foundation;
+using Windows.Media.MediaProperties;
 using Windows.Storage;
 using SubExt.Model;
 
@@ -18,6 +19,7 @@ namespace SubExt.ViewModel
         public event PropertyChangedEventHandler PropertyChanged;
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
         public StorageFile Video { get; set; }
+        public MediaRatio FrameRate { get; set; }
         public Size VideoSize
         {
             get { return _videoSize; }

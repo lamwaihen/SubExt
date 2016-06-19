@@ -25,8 +25,10 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes;
 using Windows.UI;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
@@ -40,9 +42,12 @@ namespace SubExt
     {
         private Payload p;
 
-        private byte[] m_pixels;
+        private Color[] m_pixels;
         private CanvasBitmap m_bitmapEdit;
-        private CanvasControl canvasEdit;
+        private CanvasControl canvasControlEdit;
+        private Rectangle rectFill;
+        private Point ptCanvasStart;
+        private Point m_ptRegionStart;
 
         public SubtitlePage()
         {
@@ -52,7 +57,7 @@ namespace SubExt
         {
             p = e.Parameter as Payload;
             if (p?.VideoFrames != null)
-                ItemViewOnPage.DataContext = p.VideoFrames;
+                listSubtitles.DataContext = p.VideoFrames;
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
@@ -61,13 +66,15 @@ namespace SubExt
 
         void Page_Unloaded(object sender, RoutedEventArgs e)
         {
-            this.canvasEdit.RemoveFromVisualTree();
-            this.canvasEdit = null;
+            canvasControlEdit.RemoveFromVisualTree();
+            canvasControlEdit = null;
         }
 
         private void buttonInsert_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
+            RelativePanel panel = item.Parent as RelativePanel;
+            EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
 
             int curIdx = p.VideoFrames.IndexOf(frame);
@@ -77,34 +84,95 @@ namespace SubExt
                 EndTime = new TimeSpan(frame.BeginTime.Ticks - 1),
             };
             p.VideoFrames.Insert(curIdx, frameNew);
+            EnableEditControls(panel, true);
         }
 
-        private void buttonMergeUp_Click(object sender, RoutedEventArgs e)
+        private async void buttonMergeUp_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
+            RelativePanel panel = item.Parent as RelativePanel;
+            EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
 
             int curIdx = p.VideoFrames.IndexOf(frame);
             VideoFrame framePrev = p.VideoFrames[curIdx - 1];
             frame.BeginTime = framePrev.BeginTime;
             p.VideoFrames.Remove(framePrev);
+
+            using (IRandomAccessStream stream1 = await framePrev.ImageFile.OpenAsync(FileAccessMode.Read))
+            using (CanvasBitmap bmp1 = await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream1))
+            using (IRandomAccessStream stream2 = await frame.ImageFile.OpenAsync(FileAccessMode.ReadWrite))
+            using (CanvasBitmap bmp2 = await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream2))
+            {
+                Color[] pixels1 = bmp1.GetPixelColors();
+                Color[] pixels2 = bmp2.GetPixelColors();
+
+                for (int i = 0; i < pixels1.Length; i++)
+                {
+                    if (pixels1[i] == Colors.Black)
+                        pixels2[i] = pixels1[i];
+                }
+
+                bmp2.SetPixelColors(pixels2);
+                await bmp2.SaveAsync(stream2, CanvasBitmapFileFormat.Bmp);
+            }
+
+            await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp");
+            await framePrev.ImageFile.DeleteAsync();
+
+            // Force to refresh UI
+            frame.ImageFile = frame.ImageFile;
+            EnableEditControls(panel, true);
         }
 
-        private void buttonMergeDown_Click(object sender, RoutedEventArgs e)
+        private async void buttonMergeDown_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
+            RelativePanel panel = item.Parent as RelativePanel;
+            EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
 
             int curIdx = p.VideoFrames.IndexOf(frame);
             VideoFrame frameNext = p.VideoFrames[curIdx + 1];
             frame.EndTime = frameNext.EndTime;
             p.VideoFrames.Remove(frameNext);
+
+            using (IRandomAccessStream stream1 = await frame.ImageFile.OpenAsync(FileAccessMode.ReadWrite))
+            using (CanvasBitmap bmp1 = await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream1))
+            using (IRandomAccessStream stream2 = await frameNext.ImageFile.OpenAsync(FileAccessMode.Read))
+            using (CanvasBitmap bmp2 = await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream2)) 
+            {
+                Color[] pixels1 = bmp1.GetPixelColors();
+                Color[] pixels2 = bmp2.GetPixelColors();
+
+                for (int i = 0; i < pixels1.Length; i++)
+                {
+                    if (pixels2[i] == Colors.Black)
+                        pixels1[i] = pixels2[i];
+                }
+
+                bmp1.SetPixelColors(pixels1);
+                await bmp1.SaveAsync(stream1, CanvasBitmapFileFormat.Bmp);
+            }
+
+            await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp");
+            await frameNext.ImageFile.DeleteAsync();
+
+            // Force to refresh UI
+            frame.ImageFile = frame.ImageFile;
+            EnableEditControls(panel, true);
         }
 
-        private void buttonDelete_Click(object sender, RoutedEventArgs e)
+        private async void buttonDelete_Click(object sender, RoutedEventArgs e)
         {
             Button item = sender as Button;
-            p.VideoFrames.Remove(item.DataContext as VideoFrame);
+            RelativePanel panel = item.Parent as RelativePanel;
+            EnableEditControls(panel, false);
+            VideoFrame frame = item.DataContext as VideoFrame;
+            p.VideoFrames.Remove(frame);
+
+            await frame.ImageFile.DeleteAsync();
+            EnableEditControls(panel, true);
         }
 
         private async void buttonSaveAsSrt_Click(object sender, RoutedEventArgs e)
@@ -247,48 +315,132 @@ namespace SubExt
 
         private async void buttonCloseSelctedImage_Click(object sender, RoutedEventArgs e)
         {
-            using (IRandomAccessStream stream = await p.SelectedImageFile.OpenAsync(FileAccessMode.ReadWrite))
+            if (p.SelectedImageFile != null)
             {
-                await m_bitmapEdit.SaveAsync(stream, CanvasBitmapFileFormat.Bmp);
-            }
+                using (IRandomAccessStream stream = await p.SelectedImageFile.OpenAsync(FileAccessMode.ReadWrite))
+                {
+                    await m_bitmapEdit.SaveAsync(stream, CanvasBitmapFileFormat.Bmp);
+                    m_bitmapEdit = null;
+                }
 
-            p.SelectedImageFile = null;
-            gridEdit.Visibility = Visibility.Collapsed;
-            this.canvasEdit.RemoveFromVisualTree();
-            this.canvasEdit = null;
+                // Force to refresh UI
+                VideoFrame frame = listSubtitles.SelectedItem as VideoFrame;
+                frame.ImageFile = frame.ImageFile;
+
+                p.SelectedImageFile = null;
+            }
+            if (canvasControlEdit != null)
+            {
+                canvasControlEdit.RemoveFromVisualTree();
+                canvasControlEdit = null;
+            }
+            if (rectFill != null)
+            {
+                canvasEdit.Children.Remove(rectFill);
+                rectFill = null;
+            }
+            gridEdit.Visibility = Visibility.Collapsed;            
         }
 
-        private async void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        private void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
             Image i = sender as Image;
             VideoFrame f = i.DataContext as VideoFrame;
             p.SelectedImageFile = f.ImageFile;
 
             double w = ActualWidth - gridEdit.Margin.Left - gridEdit.Margin.Right;
-            canvasEdit = new CanvasControl {
+            canvasControlEdit = new CanvasControl {
                 Width = w,
                 Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
-                Name = "canvasEdit"
+                Name = "canvasEdit",
+                Margin = new Thickness(4),
+                BorderThickness = new Thickness(2),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xB2, 0xD4, 0xEF))
             };
-            canvasEdit.CreateResources += canvasEdit_CreateResources;
-            canvasEdit.Draw += canvasEdit_Draw;
-            canvasEdit.PointerPressed += canvasEdit_PointerPressed;
-            panelEdit.Children.Add(canvasEdit);
+            canvasControlEdit.CreateResources += canvasEdit_CreateResources;
+            canvasControlEdit.Draw += canvasEdit_Draw;
+            canvasControlEdit.PointerPressed += canvasEdit_PointerPressed;
+            canvasControlEdit.PointerReleased += canvasEdit_PointerReleased;
+            canvasControlEdit.PointerMoved += canvasEdit_PointerMoved;
+            canvasEdit.Children.Add(canvasControlEdit);
+
+            rectFill = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0, 0)), Visibility = Visibility.Collapsed };
+            Canvas.SetZIndex(rectFill, 1);
+            canvasEdit.Children.Add(rectFill);            
+
+            buttonFloodFill.IsChecked = false;
+            buttonRectangleFill.IsChecked = false;
 
             gridEdit.Visibility = Visibility.Visible;
         }
 
-        private async void canvasEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
+        private void canvasEdit_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
-            PointerPoint ptrPt = e.GetCurrentPoint(canvasEdit);
-            Point ptSource = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasEdit.ActualHeight * ptrPt.Position.Y));
+            PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
+            if (!ptrPt.Properties.IsLeftButtonPressed || rectFill.Visibility == Visibility.Collapsed)
+                return;
 
-            m_pixels = m_bitmapEdit.GetPixelBytes();
-            Helper.FloodFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptSource, Colors.Black, Colors.White);
+            Point pos = ptrPt.Position;
+            pos.X += canvasControlEdit.Margin.Left;
+            pos.Y += canvasControlEdit.Margin.Top;
 
+            // Set the position of rectangle
+            var x = Math.Min(pos.X, m_ptRegionStart.X);
+            var y = Math.Min(pos.Y, m_ptRegionStart.Y);
 
-            m_bitmapEdit.SetPixelBytes(m_pixels);
-            canvasEdit.Invalidate();
+            // Set the dimenssion of the rectangle
+            var w = Math.Max(pos.X, m_ptRegionStart.X) - x;
+            var h = Math.Max(pos.Y, m_ptRegionStart.Y) - y;
+
+            Canvas.SetLeft(rectFill, x);
+            Canvas.SetTop(rectFill, y);
+            rectFill.Width = w;
+            rectFill.Height = h;
+        }
+
+        private void canvasEdit_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
+            Point ptCanvasEnd = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasControlEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasControlEdit.ActualHeight * ptrPt.Position.Y));
+
+            if (buttonRectangleFill.IsChecked == true)
+            {
+                if (ptCanvasStart == ptCanvasEnd)
+                    return;
+
+                m_pixels = m_bitmapEdit.GetPixelColors();
+                Helper.RectangleFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, ptCanvasEnd, Colors.White);
+
+                m_bitmapEdit.SetPixelColors(m_pixels);
+                canvasControlEdit.Invalidate();
+            }
+        }
+
+        private void canvasEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            rectFill.Width = rectFill.Height = 0;
+            rectFill.Visibility = Visibility.Collapsed;
+
+            PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
+            m_ptRegionStart = ptrPt.Position;
+            m_ptRegionStart.X += canvasControlEdit.Margin.Left;
+            m_ptRegionStart.Y += canvasControlEdit.Margin.Top;
+            ptCanvasStart = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasControlEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasControlEdit.ActualHeight * ptrPt.Position.Y));
+            
+            if (buttonFloodFill.IsChecked == true)
+            {
+                m_pixels = m_bitmapEdit.GetPixelColors();
+                Helper.FloodFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, Colors.Black, Colors.White);
+
+                m_bitmapEdit.SetPixelColors(m_pixels);
+                canvasControlEdit.Invalidate();
+            }
+            else if (buttonRectangleFill.IsChecked == true)
+            {
+                Canvas.SetLeft(rectFill, ptrPt.Position.X);
+                Canvas.SetTop(rectFill, ptrPt.Position.Y);
+                rectFill.Visibility = Visibility.Visible;
+            }
         }  
         private void canvasEdit_CreateResources(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
         {
@@ -316,8 +468,29 @@ namespace SubExt
                 }
             }
             Rect rtSource = new Rect(0, 0, m_bitmapEdit.SizeInPixels.Width, m_bitmapEdit.SizeInPixels.Height);
-            Rect rtDest = new Rect(0, 0, canvasEdit.ActualWidth, canvasEdit.ActualHeight);
+            Rect rtDest = new Rect(0, 0, canvasControlEdit.ActualWidth, canvasControlEdit.ActualHeight);
             args.DrawingSession.DrawImage(m_bitmapEdit, rtDest, rtSource);
+        }
+
+        private void EnableEditControls(RelativePanel panel, bool enable)
+        {
+            foreach (var item in panel.Children)
+            {
+                if (item is Button)
+                {
+                    (item as Button).IsEnabled = enable;
+                }
+            }
+        }
+
+        private void buttonFloodFill_Click(object sender, RoutedEventArgs e)
+        {
+            buttonRectangleFill.IsChecked = false;
+        }
+
+        private void buttonRectangleFill_Click(object sender, RoutedEventArgs e)
+        {
+            buttonFloodFill.IsChecked = false;
         }
     }
 
