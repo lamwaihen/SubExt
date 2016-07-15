@@ -57,7 +57,10 @@ namespace SubExt
         {
             p = e.Parameter as Payload;
             if (p?.VideoFrames != null)
+            {
                 listSubtitles.DataContext = p.VideoFrames;
+                listSubtitles.SelectedIndex = 0;
+            }
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
@@ -66,8 +69,11 @@ namespace SubExt
 
         void Page_Unloaded(object sender, RoutedEventArgs e)
         {
-            canvasControlEdit.RemoveFromVisualTree();
-            canvasControlEdit = null;
+            if (canvasControlEdit != null)
+            {
+                canvasControlEdit.RemoveFromVisualTree();
+                canvasControlEdit = null;
+            }
         }
 
         private void buttonInsert_Click(object sender, RoutedEventArgs e)
@@ -155,7 +161,7 @@ namespace SubExt
                 await bmp1.SaveAsync(stream1, CanvasBitmapFileFormat.Bmp);
             }
 
-            await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp");
+            await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp", NameCollisionOption.ReplaceExisting);
             await frameNext.ImageFile.DeleteAsync();
 
             // Force to refresh UI
@@ -173,6 +179,12 @@ namespace SubExt
 
             await frame.ImageFile.DeleteAsync();
             EnableEditControls(panel, true);
+
+            //foreach (VideoFrame frame in listSubtitles.SelectedItems)
+            //{
+            //    p.VideoFrames.Remove(frame);
+            //    await frame.ImageFile.DeleteAsync();
+            //}
         }
 
         private async void buttonSaveAsSrt_Click(object sender, RoutedEventArgs e)
@@ -400,6 +412,9 @@ namespace SubExt
 
         private void canvasEdit_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
+            if (m_bitmapEdit == null)
+                return;
+
             PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
             Point ptCanvasEnd = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasControlEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasControlEdit.ActualHeight * ptrPt.Position.Y));
 
@@ -418,6 +433,9 @@ namespace SubExt
 
         private void canvasEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
+            if (m_bitmapEdit == null)
+                return;
+
             rectFill.Width = rectFill.Height = 0;
             rectFill.Visibility = Visibility.Collapsed;
 

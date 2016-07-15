@@ -23,14 +23,19 @@
             <ColumnDefinition Width="384"/>
         </Grid.ColumnDefinitions>
         <RelativePanel Grid.Column="0">
-            <Canvas x:Name="canvasPreview" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignTopWithPanel="True" RelativePanel.Above="sliderPreview">
+            <Canvas x:Name="canvasPreview" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignTopWithPanel="True" RelativePanel.Above="sliderPreview" Margin="20">
                 <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1" 
                            Width="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=W}" 
                            Height="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=H}"
                            Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=X}"
                            Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=Y}"/>
-
-                <MediaElement x:Name="mediaFrame" Margin="8" AutoPlay="False" MediaOpened="mediaFrame_MediaOpened"  PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" RelativePanel.AlignRightWithPanel="True"/>
+                <Border BorderThickness="2" BorderBrush="#FF3977A7" >
+                    <MediaElement x:Name="mediaFrame" AutoPlay="False" MediaOpened="mediaFrame_MediaOpened" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" RelativePanel.AlignRightWithPanel="True">
+                        <MediaElement.TransportControls>
+                            <MediaTransportControls/>
+                        </MediaElement.TransportControls>
+                    </MediaElement>
+                </Border>
                 <SwapChainPanel x:Name="swapChainPanelTarget" Visibility="Collapsed" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
             </Canvas>
             <Button x:Name="buttonPlay" Content="&#xE102;" Margin="8" Click="buttonPlay_Click" FontFamily="Segoe UI Symbol" RelativePanel.AlignBottomWithPanel="True"/>

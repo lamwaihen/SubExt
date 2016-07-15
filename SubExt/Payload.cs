@@ -20,6 +20,7 @@ namespace SubExt.ViewModel
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
         public StorageFile Video { get; set; }
         public MediaRatio FrameRate { get; set; }
+        public TimeSpan Duration { get; set; }
         public Size VideoSize
         {
             get { return _videoSize; }

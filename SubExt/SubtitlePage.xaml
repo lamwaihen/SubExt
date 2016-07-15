@@ -32,8 +32,8 @@
                 <!--<Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>-->
             </StackPanel>
         </Grid>
-        <ListBox x:Name="listSubtitles" Grid.Row="0" ItemsSource="{Binding}">
-            <ListBox.ItemTemplate>
+        <ListView x:Name="listSubtitles" Grid.Row="0" ItemsSource="{Binding}" SelectionMode="Single">
+            <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -52,11 +52,12 @@
                             <Button x:Name="buttonMergeDown" Content="Merge Down" Margin="4" Click="buttonMergeDown_Click" RelativePanel.RightOf="buttonMergeUp"/>
                             <Button x:Name="buttonDelete" Content="Delete" Margin="4" Click="buttonDelete_Click" RelativePanel.RightOf="buttonMergeDown"/>
                             <TextBox x:Name="textBoxSubtitle" Text="{Binding Subtitle, Mode=TwoWay}" RelativePanel.Below="buttonInsert" Margin="4" RelativePanel.AlignRightWith="buttonDelete" RelativePanel.AlignLeftWith="buttonInsert" VerticalAlignment="Top" RelativePanel.AlignBottomWithPanel="True" AcceptsReturn="True" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                            
                         </RelativePanel>
                     </Grid>
                 </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+            </ListView.ItemTemplate>
+        </ListView>
         <RelativePanel Grid.Row="1">
             <Button x:Name="buttonStartOcr" Content="Start OCR" Margin="4" Click="buttonStartOcr_Click"/>
             <Button x:Name="buttonSaveAsImg" Content="Save as Image" Margin="4" Click="buttonSaveAsImg_Click" RelativePanel.RightOf="buttonStartOcr"/>

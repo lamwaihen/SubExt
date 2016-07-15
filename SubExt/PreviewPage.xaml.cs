@@ -19,6 +19,7 @@ using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.Input;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -57,6 +58,12 @@ namespace SubExt
     /// </summary>
     public sealed partial class PreviewPage : Page
     {
+        static private CoreDispatcher UIdispatcher = CoreWindow.GetForCurrentThread().Dispatcher;
+        static public IAsyncAction UIThreadAsync(DispatchedHandler function)
+        {
+            return UIdispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, function);
+        }
+
         public PreviewUIState u = new PreviewUIState();
         public Payload p = new Payload();
         private Point m_ptRegionStart;
@@ -93,12 +100,13 @@ namespace SubExt
              var previewEffectPropertySet = new PropertySet();
             previewEffectPropertySet["SubtitleRect"] = p.SubtitleRect;
             previewEffectPropertySet["VideoFilename"] = p.Video.Name;
+            previewEffectPropertySet["OnFrameProceeded"] = (Action<TimeSpan>)OnFrameProceeded;
             MediaClip clip = await MediaClip.CreateFromFileAsync(p.Video);
             clip.VideoEffectDefinitions.Add(new VideoEffectDefinition(typeof(ExtractVideoEffect).FullName, previewEffectPropertySet));
             VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
             MediaComposition composition = new MediaComposition();
             composition.Clips.Add(clip);
-            
+          
             mediaProceed.SetMediaStreamSource(composition.GenerateMediaStreamSource());
             mediaProceed.Play();
         }
@@ -222,7 +230,10 @@ namespace SubExt
                     clip.VideoEffectDefinitions.Add(new VideoEffectDefinition(typeof(PreviewVideoEffect).FullName, m_previewEffectPropertySet));
                     VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
                     p.FrameRate = videoProps.FrameRate;
-                    
+                    p.Duration = clip.OriginalDuration;
+
+                    progressPostProcessing.Maximum = p.Duration.TotalSeconds / ((double)p.FrameRate.Denominator / p.FrameRate.Numerator);
+
                     MediaComposition composition = new MediaComposition();
                     composition.Clips.Add(clip);
                     mediaFrame.SetMediaStreamSource(composition.GenerateMediaStreamSource());
@@ -347,6 +358,42 @@ namespace SubExt
 
                 Frame.Navigate(typeof(SubtitlePage), p);
             }
+        }
+
+        public void OnFrameProceeded(TimeSpan time)
+        {
+            UIThreadAsync(async () =>
+            {
+                progressPostProcessing.Value++;
+
+                if (progressPostProcessing.Value == progressPostProcessing.Maximum)
+                {
+                    StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
+                    IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
+                    string[] separators = new string[] { "-", ".bmp" };
+                    foreach (StorageFile file in files)
+                    {
+                        string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+
+                        VideoFrame frame = new VideoFrame()
+                        {
+                            BeginTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0])),
+                            ImageFile = file
+                        };
+                        if (timestamps.Length == 1)
+                            frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0]));
+                        else
+                            frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[1]));
+
+                        Windows.Storage.FileProperties.ImageProperties imgProps = await file.Properties.GetImagePropertiesAsync();
+                        frame.ImageSize = new Size(imgProps.Width, imgProps.Height);
+                        p.VideoFrames.Add(frame);
+                        progressPostProcessing.Value++;
+                    }
+
+                    Frame.Navigate(typeof(SubtitlePage), p);
+                }
+            });
         }
     }
 

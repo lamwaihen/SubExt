@@ -17,6 +17,7 @@ using Windows.Foundation.Collections;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Media.Effects;
 using Windows.Media.MediaProperties;
+using Windows.Storage.Streams;
 using Windows.System.Threading;
 
 namespace VideoEffects
@@ -54,7 +55,14 @@ namespace VideoEffects
         private StorageFile recentFile;
         private string recentFilename = string.Empty;
         Color[] prevPixels;
+        Color[] prevScaledPx = null;
+        Color[] allWhitePixels = null;
+        Color[] savePixels = null;
+        StorageFile saveFile;
+        string saveFilename = string.Empty;
         int prevTime;
+
+        private Action<TimeSpan> OnFrameProceeded = null;
 
         public bool IsReadOnly { get { return false; } }
 
@@ -75,8 +83,17 @@ namespace VideoEffects
         public void SetProperties(IPropertySet configuration)
         {
             object value;
+            if (configuration.TryGetValue("OnFrameProceeded", out value))
+            {
+                OnFrameProceeded = (Action<TimeSpan>)value;
+            }
+
             if (configuration.TryGetValue("SubtitleRect", out value))
+            {
                 subtitleRect = (Rect)value;
+
+                allWhitePixels = Enumerable.Repeat(Colors.White, (int)subtitleRect.Width * (int)subtitleRect.Height).ToArray();
+            }
 
             if (configuration.TryGetValue("VideoFilename", out value))
             {
@@ -112,7 +129,10 @@ namespace VideoEffects
 
             TimeSpan ts = context.InputFrame.RelativeTime.Value;
             Color[] curPixels = null;
+            Color[] curScaledPx = null;
             int width, height;
+            float scaleRatio = 0.25f;
+            bool saveNew = true;
 
             using (CanvasBitmap inputBitmap = CanvasBitmap.CreateFromDirect3D11Surface(canvasDevice, inputSurface))
             using (CanvasRenderTarget renderTarget = CanvasRenderTarget.CreateFromDirect3D11Surface(canvasDevice, outputSurface))
@@ -129,23 +149,97 @@ namespace VideoEffects
             using (CompositeEffect composite = new CompositeEffect { Sources = { invertEffect } })
             {
                 Rect rtDst = new Rect(0, 0, subtitleRect.Width, subtitleRect.Height);
-                ds.DrawImage(composite, rtDst, subtitleRect);
-
                 width = (int)subtitleRect.Width;
                 height = (int)subtitleRect.Height;
-                curPixels = renderTarget.GetPixelColors(0, 0, width, height);
-            }
-            // Floodfill to clear the edges
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
+
                 {
-                    if (y == 0 || y == height - 1 || x == 0 || x == width - 1)
+                    //ScaleEffect scale1 = new ScaleEffect { Source = composite, Scale = new Vector2(scaleRatio, scaleRatio) };
+                    //CompositeEffect composite1 = new CompositeEffect { Sources = { scale1 } };
+                    //Rect scaledRect = new Rect(subtitleRect.Left * scaleRatio, subtitleRect.Top * scaleRatio, subtitleRect.Width * scaleRatio, subtitleRect.Height * scaleRatio);
+                    //ds.DrawImage(composite1);
+
+                    //curScaledPx = renderTarget.GetPixelColors((int)scaledRect.Left, (int)scaledRect.Top, (int)scaledRect.Width, (int)scaledRect.Height);
+
+                    //double similarity = CompareScaledFrames(curScaledPx, prevScaledPx, new Size(scaledRect.Width, scaledRect.Height));
+                    //prevScaledPx = curScaledPx;
+                    //prevTime = (int)ts.TotalMilliseconds;
+
+                    // Draw the large one
+                    ds.DrawImage(composite);
+                    curPixels = renderTarget.GetPixelColors((int)subtitleRect.Left, (int)subtitleRect.Top, (int)subtitleRect.Width, (int)subtitleRect.Height);
+
+                    // Floodfill to clear the edges
+                    Parallel.For(0, height, y =>
                     {
-                        FloodFill(curPixels, width, height, new Point(x, y), Colors.Black, Colors.White);
+                        for (int x = 0; x < width; x++)
+                        {
+                            if (y == 0 || y == height - 1 || x == 0 || x == width - 1)
+                            {
+                                FloodFill(curPixels, width, height, new Point(x, y), Colors.Black, Colors.White);
+                            }
+                        }
+                    });
+
+                    double whiteSim = CompareScaledFrames(curPixels, allWhitePixels, new Size(subtitleRect.Width, subtitleRect.Height));
+                    if (whiteSim > 0.99)
+                    {
+                        prevPixels = allWhitePixels;
+                        prevTime = (int)ts.TotalMilliseconds;
+                        OnFrameProceeded(ts);
+                        return;
                     }
-                }
+
+                    double similarity = CompareScaledFrames(curPixels, prevPixels, new Size(subtitleRect.Width, subtitleRect.Height));
+                    prevPixels = curPixels;
+                    prevTime = (int)ts.TotalMilliseconds;
+
+                    if (similarity > 0.99)
+                    {
+                        string filename = saveFilename;
+                        int pos = saveFilename.LastIndexOf("-");
+                        if (pos > 0)
+                            filename = filename.Substring(0, pos + 1) + ((int)ts.TotalMilliseconds).ToString("D8") + ".bmp";
+                        else
+                        {
+                            string sub = filename.Substring(0, filename.LastIndexOf("."));
+                            filename = sub + "-" + ((int)ts.TotalMilliseconds).ToString("D8") + ".bmp";
+                        }
+                        // Update the name string until the next frame is created, then use this to rename the previous one.
+                        saveFilename = filename;
+
+                        savePixels = mergeFrames(savePixels, curPixels);
+                    }
+                    else
+                    {
+                        //CanvasBitmap b = CanvasBitmap.CreateFromColors(canvasDevice, curScaledPx, (int)scaledRect.Width, (int)scaledRect.Height, 96);
+                        //b.SaveAsync(ApplicationData.Current.TemporaryFolder.Path + "\\S" + ((int)context.OutputFrame.RelativeTime.Value.TotalMilliseconds).ToString("D8") + "_" + ((int)(diff * 100)).ToString() + ".bmp", CanvasBitmapFileFormat.Bmp).Completed = new AsyncActionCompletedHandler((saveInfo, saveStatus) => { });
+
+                        string filename = saveFilename;
+
+                        Color[] pixels = null;
+                        if (savePixels != null)
+                        {
+                            pixels = new Color[savePixels.Length];
+                            savePixels.CopyTo(pixels, 0);
+                        }
+
+                        saveFilename = ((int)ts.TotalMilliseconds).ToString("D8") + ".bmp";
+                        savePixels = new Color[curPixels.Length];
+                        curPixels.CopyTo(savePixels, 0);
+
+                        if (filename != string.Empty && pixels != null)
+                        {
+                            await Task.Run(() => SaveAndRenameFile(folder, pixels, filename));
+                        }
+                    }
+                }   
             }
+
+            OnFrameProceeded(ts);
+            return;
+            
+
+            
 
             // Crop white
             int newHead = 0;
@@ -176,10 +270,10 @@ namespace VideoEffects
                 return;
             }
 
-            double dDiff = CompareFrames(curPixels, prevPixels);
+            double dDiff = 0;//CompareScaledFrames(curPixels, prevPixels, width, context);
             prevPixels = curPixels;
             prevTime = (int)ts.TotalMilliseconds;
-            if (dDiff > 0.995)
+            if (!saveNew && recentFile != null)
             {
                 string filename = recentFile.Name;
                 int pos = filename.LastIndexOf("-");
@@ -223,6 +317,38 @@ namespace VideoEffects
             f.RenameAsync(n).Completed = new AsyncActionCompletedHandler((renameInfo, renameStatus) => { });            
         }
 
+        void SaveAndRenameFile(StorageFolder f, Color[] c, string n)
+        {
+            f.CreateFileAsync(n, CreationCollisionOption.ReplaceExisting).Completed = new AsyncOperationCompletedHandler<StorageFile>((createInfo, createStatus) =>
+            {
+                StorageFile file = createInfo.GetResults();
+                file.OpenAsync(FileAccessMode.ReadWrite).Completed = new AsyncOperationCompletedHandler<IRandomAccessStream>((openInfo, openStatus) =>
+                {
+                    IRandomAccessStream outStream = openInfo.GetResults();
+                    CanvasBitmap bitmap = CanvasBitmap.CreateFromColors(canvasDevice, c, (int)subtitleRect.Width, (int)subtitleRect.Height);
+                    bitmap.SaveAsync(outStream, CanvasBitmapFileFormat.Bmp).Completed = new AsyncActionCompletedHandler((saveInfo, saveStatus) =>
+                    {
+                        //f.RenameAsync(n).Completed = new AsyncActionCompletedHandler((renameInfo, renameStatus) => { });
+                    });
+                });
+            });
+        }
+
+        private Color[] mergeFrames(Color[] img1, Color[] img2)
+        {
+            if (img1 == null)
+                return img2;
+
+            Color[] newImg = img1;
+            Parallel.For(0, newImg.Length, i =>
+            {
+                if (newImg[i] != img2[i] && newImg[i] == Colors.White)
+                    newImg[i] = img2[i];
+            });
+
+            return newImg;
+        }
+
         private double CompareFrames(Color[] img1, Color[] img2)
         {
             if (img2 == null)
@@ -257,6 +383,36 @@ namespace VideoEffects
             }
 
             return sameCount / length;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="img1"></param>
+        /// <param name="img2"></param>
+        /// <param name="size"></param>
+        /// <returns>Persentage of similarity</returns>
+        private double CompareScaledFrames(Color[] img1, Color[] img2, Size size)
+        {
+            if (img2 == null)
+                return 0;
+
+            double maxDiff = 0;
+            double sameCount = 0;
+            int width = (int)size.Width;
+            int height = (int)size.Height;
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    double diff = (double)Math.Abs(img1[(int)(x + width * y)].R - img2[(int)(x + width * y)].R) / 256;
+                    maxDiff = Math.Max(maxDiff, diff);
+
+                    if (img1[(int)(x + width * y)].R == img2[(int)(x + width * y)].R)
+                        sameCount++;
+                }
+            }                    
+
+            return sameCount / img1.Length;
         }
 
         private static void FloodFill(Color[] pixels, int width, int height, Point pt, Color targetColor, Color replacementColor)
