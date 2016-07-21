@@ -67,6 +67,8 @@ namespace SubExt
         public PreviewUIState u = new PreviewUIState();
         public Payload p = new Payload();
         private Point m_ptRegionStart;
+        private Point m_ptOffset;
+        private FrameworkElement m_pressedDot;
 
         private SwapChainPanelRenderer m_renderer;
         private MediaReader m_mediaReader;
@@ -110,6 +112,23 @@ namespace SubExt
             mediaProceed.SetMediaStreamSource(composition.GenerateMediaStreamSource());
             mediaProceed.Play();
         }
+        private void buttonRegion_Click(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            switch (element.Name)
+            {
+                case "buttonRegionXDec": p.SubtitleRect = new Rect(p.SubtitleRect.X - 1, p.SubtitleRect.Y, p.SubtitleRect.Width, p.SubtitleRect.Height); break;
+                case "buttonRegionXInc": p.SubtitleRect = new Rect(p.SubtitleRect.X + 1, p.SubtitleRect.Y, p.SubtitleRect.Width, p.SubtitleRect.Height); break;
+                case "buttonRegionYDec": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y - 1, p.SubtitleRect.Width, p.SubtitleRect.Height); break;
+                case "buttonRegionYInc": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y + 1, p.SubtitleRect.Width, p.SubtitleRect.Height); break;
+                case "buttonRegionWDec": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y, p.SubtitleRect.Width - 1, p.SubtitleRect.Height); break;
+                case "buttonRegionWInc": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y, p.SubtitleRect.Width + 1, p.SubtitleRect.Height); break;
+                case "buttonRegionHDec": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y, p.SubtitleRect.Width, p.SubtitleRect.Height - 1); break;
+                case "buttonRegionHInc": p.SubtitleRect = new Rect(p.SubtitleRect.X, p.SubtitleRect.Y, p.SubtitleRect.Width, p.SubtitleRect.Height + 1); break;
+                default:
+                    break;
+            }
+        }
         private void effects_Changed(object sender, RoutedEventArgs e)
         {
             //SeekVideo(TimeSpan.FromMilliseconds(sliderPreview.Value));
@@ -120,6 +139,71 @@ namespace SubExt
                 sliderStampSmoothness.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
                 sliderStampThreshold.Visibility = checkBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             }
+        }
+        private void rectRegion_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            PointerPoint ptrPt = e.GetCurrentPoint(mediaFrame);
+            if (!ptrPt.Properties.IsLeftButtonPressed || rectRegion.Visibility == Visibility.Collapsed || m_pressedDot == null)
+                return;
+
+            var pos = ptrPt.Position;
+
+            Rect rectNew = p.SubtitleUIRect;
+            Debug.WriteLine(string.Format("Point {0}\tstart {1}\tRect {2}", pos.ToString(), m_ptRegionStart.ToString(), rectNew.ToString()));
+            switch ((sender as FrameworkElement).Name)
+            {
+                case "dotRegionLT":
+                    rectNew.Width = Math.Max(5, rectNew.Right - pos.X);
+                    rectNew.Height = Math.Max(5, rectNew.Bottom - pos.Y);
+                    rectNew.X = pos.X;
+                    rectNew.Y = pos.Y;
+                    break;
+                case "dotRegionRT":
+                    rectNew.Width = Math.Max(5, pos.X - rectNew.Left);
+                    rectNew.Height = Math.Max(5, rectNew.Bottom - pos.Y);
+                    rectNew.Y = pos.Y;
+                    break;
+                case "dotRegionLB":
+                    rectNew.Width = Math.Max(5, rectNew.Right - pos.X);
+                    rectNew.Height = Math.Max(5, pos.Y - rectNew.Top);
+                    rectNew.X = pos.X;
+                    break;
+                case "dotRegionRB":
+                    rectNew.Width = Math.Max(5, pos.X - p.SubtitleUIRect.X);
+                    rectNew.Height = Math.Max(5, pos.Y - p.SubtitleUIRect.Y);
+                    break;
+                case "rectRegion":
+                    rectNew.X += (pos.X - m_ptRegionStart.X);
+                    rectNew.Y += (pos.Y - m_ptRegionStart.Y);
+                    m_ptRegionStart = pos;
+                    break;
+            }
+
+            p.SubtitleUIRect = rectNew;
+            e.Handled = true;
+        }
+        private void rectRegion_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            PointerPoint ptrPt = e.GetCurrentPoint(mediaFrame);
+            if (ptrPt.Properties.IsLeftButtonPressed)
+            {
+                m_pressedDot = sender as FrameworkElement;
+                m_pressedDot.CapturePointer(e.Pointer);
+                m_ptRegionStart = ptrPt.Position;
+                m_ptOffset = new Point(m_ptRegionStart.X - p.SubtitleUIRect.X, m_ptRegionStart.Y - p.SubtitleUIRect.Y);
+
+                e.Handled = true;
+            }
+        }
+        private void rectRegion_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            m_ptRegionStart = m_ptOffset = new Point(0, 0);
+            if (m_pressedDot != null)
+            {
+                m_pressedDot.ReleasePointerCapture(e.Pointer);
+                m_pressedDot = null;
+            }
+            e.Handled = true;
         }
         private void sliderPreview_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
@@ -132,63 +216,29 @@ namespace SubExt
         }
         private void sliderStamp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
-            SeekVideo(TimeSpan.FromMilliseconds(sliderPreview.Value));
-        }
-        private void swapChainPanelTarget_Loaded(object sender, RoutedEventArgs e)
-        {
-            return;
-            if (swapChainPanelTarget.ActualHeight > 0 && swapChainPanelTarget.ActualWidth > 0)
-            {
-                if (m_renderer == null)
-                {
-                    OpenPreviewVideo();
-                }
-            }
-
-            swapChainPanelTarget.SizeChanged += async (s, args) =>
-            {
-                OpenPreviewVideo();
-            };
+            //SeekVideo(TimeSpan.FromMilliseconds(sliderPreview.Value));
         }
         private void swapChainPanelTarget_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            rectRegion.Width = rectRegion.Height = 0;
-            rectRegion.Visibility = Visibility.Collapsed;
+            //rectRegion.Width = rectRegion.Height = 0;
+            //rectRegion.Visibility = Visibility.Collapsed;
 
-            PointerPoint ptrPt = e.GetCurrentPoint(swapChainPanelTarget);
-            m_ptRegionStart = ptrPt.Position;
-            if (!p.VideoPreview.Contains(m_ptRegionStart))
+            PointerPoint ptrPt = e.GetCurrentPoint(mediaFrame);
+            if (!p.VideoPreview.Contains(ptrPt.Position))
                 return;
+
+            //m_ptRegionStart = ptrPt.Position;
 
             // Initialize the rectangle.
             // Set border color and width
-            rectRegion.Visibility = Visibility.Visible;
+            if (rectRegion.Visibility == Visibility.Collapsed)
+            {
+                rectRegion.Visibility = Visibility.Visible;
 
-            p.SubtitleUIRect = new Rect(m_ptRegionStart.X, m_ptRegionStart.Y, 0, 0);
+                p.SubtitleUIRect = new Rect(ptrPt.Position.X - (p.SubtitleUIRect.Width / 2), ptrPt.Position.Y - (p.SubtitleUIRect.Height / 2), p.SubtitleUIRect.Width, p.SubtitleUIRect.Height);
+            }
+            e.Handled = true;
         }
-        private void swapChainPanelTarget_PointerMoved(object sender, PointerRoutedEventArgs e)
-        {
-            PointerPoint ptrPt = e.GetCurrentPoint(swapChainPanelTarget);
-            if (!ptrPt.Properties.IsLeftButtonPressed || rectRegion.Visibility == Visibility.Collapsed)
-                return;
-
-            var pos = ptrPt.Position;
-
-            // Set the position of rectangle
-            var x = Math.Min(pos.X, m_ptRegionStart.X);
-            var y = Math.Min(pos.Y, m_ptRegionStart.Y);
-
-            // Set the dimenssion of the rectangle
-            var w = Math.Max(pos.X, m_ptRegionStart.X) - x;
-            var h = Math.Max(pos.Y, m_ptRegionStart.Y) - y;
-
-            p.SubtitleUIRect = new Rect(x, y, w, h);
-        }
-        private void swapChainPanelTarget_PointerReleased(object sender, PointerRoutedEventArgs e)
-        {            
-            m_ptRegionStart = new Point(0, 0);
-        }
-
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             //canvasPreview.Height = mediaFrame.Height = (canvasPreview.Parent as FrameworkElement).ActualHeight - sliderPreview.ActualHeight;
@@ -286,7 +336,7 @@ namespace SubExt
                             else
                                 appliedEffects.Source = new BitmapImageSource(inputBitmap);
 
-                            m_renderer = new SwapChainPanelRenderer(appliedEffects, swapChainPanelTarget);
+                            //m_renderer = new SwapChainPanelRenderer(appliedEffects, swapChainPanelTarget);
 
                             await m_renderer.RenderAsync();
                             m_isRendering = false;
@@ -444,14 +494,33 @@ namespace SubExt
             {
                 _rt = (Rect)value;
                 string param = parameter as string;
-                if (param == "X")
-                    return _rt.X;
-                else if (param == "Y")
-                    return _rt.Y;
-                else if (param == "W")
-                    return _rt.Width;
-                else if (param == "H")
-                    return _rt.Height;
+                switch (param)
+                {
+                    case "X":
+                        return _rt.X;
+                    case "Y":
+                        return _rt.Y;
+                    case "W":
+                        return _rt.Width;
+                    case "H":
+                        return _rt.Height;
+                    case "LTX":
+                        return _rt.Left - 4;
+                    case "LTY":
+                        return _rt.Top - 4;
+                    case "RTX":
+                        return _rt.Right - 4;
+                    case "RTY":
+                        return _rt.Top - 4;
+                    case "LBX":
+                        return _rt.Left - 4;
+                    case "LBY":
+                        return _rt.Bottom - 4;
+                    case "RBX":
+                        return _rt.Right - 4;
+                    case "RBY":
+                        return _rt.Bottom - 4;
+                }
             }
 
             return value;

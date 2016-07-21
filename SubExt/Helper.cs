@@ -102,8 +102,7 @@ namespace SubExt
             }
             catch (AggregateException e)
             {
-                int n = 0;
-                n++;
+                System.Diagnostics.Debug.WriteLine(e.Message);
             }
         }
         static private async Task InnerExecute(Action action)

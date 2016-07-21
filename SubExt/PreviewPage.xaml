@@ -24,19 +24,31 @@
         </Grid.ColumnDefinitions>
         <RelativePanel Grid.Column="0">
             <Canvas x:Name="canvasPreview" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignTopWithPanel="True" RelativePanel.Above="sliderPreview" Margin="20">
-                <Rectangle x:Name="rectRegion" Margin="8" Fill="#33FF0000" Canvas.ZIndex="1" 
+                <Ellipse x:Name="dotRegionLT" Width="10" Height="10" Fill="White" Stroke="Black" Canvas.ZIndex="2"
+                         Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=LTX}"
+                         Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=LTY}" Visibility="{Binding Visibility, ElementName=mediaFrame}" PointerPressed="rectRegion_PointerPressed" PointerReleased="rectRegion_PointerReleased" PointerMoved="rectRegion_PointerMoved"/>
+                <Ellipse x:Name="dotRegionRT" Width="10" Height="10" Fill="White" Stroke="Black" Canvas.ZIndex="2"
+                         Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=RTX}"
+                         Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=RTY}" Visibility="{Binding Visibility, ElementName=mediaFrame}" PointerPressed="rectRegion_PointerPressed" PointerReleased="rectRegion_PointerReleased" PointerMoved="rectRegion_PointerMoved"/>
+                <Ellipse x:Name="dotRegionLB" Width="10" Height="10" Fill="White" Stroke="Black" Canvas.ZIndex="2"
+                         Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=LBX}"
+                         Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=LBY}" Visibility="{Binding Visibility, ElementName=mediaFrame}" PointerPressed="rectRegion_PointerPressed" PointerReleased="rectRegion_PointerReleased" PointerMoved="rectRegion_PointerMoved"/>
+                <Ellipse x:Name="dotRegionRB" Width="10" Height="10" Fill="White" Stroke="Black" Canvas.ZIndex="2"
+                         Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=RBX}"
+                         Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=RBY}" Visibility="{Binding Visibility, ElementName=mediaFrame}" PointerPressed="rectRegion_PointerPressed" PointerReleased="rectRegion_PointerReleased" PointerMoved="rectRegion_PointerMoved"/>
+                <Rectangle x:Name="rectRegion" Margin="0" Fill="#33FF0000" Canvas.ZIndex="1" 
                            Width="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=W}" 
                            Height="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=H}"
                            Canvas.Left="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=X}"
-                           Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=Y}"/>
+                           Canvas.Top="{x:Bind Path=p.SubtitleUIRect, Mode=OneWay, Converter={StaticResource SubtitleUIRectFormatter}, ConverterParameter=Y}" Stroke="#99FF0000" IsHitTestVisible="True" PointerPressed="rectRegion_PointerPressed" PointerReleased="rectRegion_PointerReleased" PointerMoved="rectRegion_PointerMoved"/>
                 <Border BorderThickness="2" BorderBrush="#FF3977A7" >
-                    <MediaElement x:Name="mediaFrame" AutoPlay="False" MediaOpened="mediaFrame_MediaOpened" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" RelativePanel.AlignRightWithPanel="True">
+                    <MediaElement x:Name="mediaFrame" AutoPlay="False" MediaOpened="mediaFrame_MediaOpened" PointerPressed="swapChainPanelTarget_PointerPressed" RelativePanel.AlignRightWithPanel="True">
                         <MediaElement.TransportControls>
                             <MediaTransportControls/>
                         </MediaElement.TransportControls>
                     </MediaElement>
                 </Border>
-                <SwapChainPanel x:Name="swapChainPanelTarget" Visibility="Collapsed" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />
+                <!--<SwapChainPanel x:Name="swapChainPanelTarget" Visibility="Collapsed" Margin="8" PointerPressed="swapChainPanelTarget_PointerPressed" PointerMoved="swapChainPanelTarget_PointerMoved" PointerReleased="swapChainPanelTarget_PointerReleased" BorderBrush="Red" BorderThickness="1" />-->
             </Canvas>
             <Button x:Name="buttonPlay" Content="&#xE102;" Margin="8" Click="buttonPlay_Click" FontFamily="Segoe UI Symbol" RelativePanel.AlignBottomWithPanel="True"/>
             <Button x:Name="buttonPause" Content="&#xE103;" Margin="8" Click="buttonPause_Click" FontFamily="Segoe UI Symbol" RelativePanel.RightOf="buttonPlay" RelativePanel.AlignBottomWithPanel="True"/>
@@ -48,12 +60,49 @@
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <RelativePanel Grid.Row="0">
-                <TextBox x:Name="textBoxRegionX" Header="X" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=X}" HorizontalAlignment="Left" Margin="12,4"/>
-                <TextBox x:Name="textBoxRegionY" Header="Y" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=Y}" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionX"/>
-                <TextBox x:Name="textBoxRegionW" Header="Width" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=W}" HorizontalAlignment="Left" Margin="12,4" RelativePanel.RightOf="textBoxRegionY"/>
-                <TextBox x:Name="textBoxRegionH" Header="Height" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=H}" HorizontalAlignment="Left" Margin="12,4" InputScope="Digits" RelativePanel.RightOf="textBoxRegionW"/>
-            </RelativePanel>
+            
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <RelativePanel x:Name="panelX" Grid.Column="0" Background="Red" Margin="8">
+                        <TextBlock x:Name="textX" Text="Left"/>
+                        <Button x:Name="buttonRegionXDec" Content="-" RelativePanel.Below="textX" Click="buttonRegion_Click"/>
+                        <TextBox x:Name="textBoxRegionX" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=X}" RelativePanel.Below="textX" RelativePanel.AlignVerticalCenterWith="buttonRegionXDec" RelativePanel.AlignHorizontalCenterWithPanel="True"/>
+                        <Button x:Name="buttonRegionXInc" Content="+" RelativePanel.Below="textX" RelativePanel.AlignVerticalCenterWith="buttonRegionXDec" Click="buttonRegion_Click" RelativePanel.AlignRightWithPanel="True"/>
+                    </RelativePanel>
+                    <RelativePanel x:Name="panelY" Grid.Column="1" Background="Green" Margin="8">
+                        <TextBlock x:Name="textY" Text="Top"/>
+                        <Button x:Name="buttonRegionYDec" Content="-" RelativePanel.Below="textY" Click="buttonRegion_Click"/>
+                        <TextBox x:Name="textBoxRegionY" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=Y}" RelativePanel.Below="textY" RelativePanel.AlignVerticalCenterWith="buttonRegionYDec" RelativePanel.AlignHorizontalCenterWithPanel="True"/>
+                        <Button x:Name="buttonRegionYInc" Content="+" RelativePanel.Below="textY" RelativePanel.AlignVerticalCenterWith="buttonRegionYDec" Click="buttonRegion_Click" RelativePanel.AlignRightWithPanel="True"/>
+                    </RelativePanel>
+                </Grid>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <RelativePanel x:Name="panelW" Grid.Column="0" Background="Blue" Margin="8">
+                        <TextBlock x:Name="textW" Text="Width"/>
+                        <Button x:Name="buttonRegionWDec" Content="-" RelativePanel.Below="textW" Click="buttonRegion_Click"/>
+                        <TextBox x:Name="textBoxRegionW" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=W}" RelativePanel.Below="textW" RelativePanel.AlignVerticalCenterWith="buttonRegionWDec" RelativePanel.AlignHorizontalCenterWithPanel="True"/>
+                        <Button x:Name="buttonRegionWInc" Content="+" RelativePanel.Below="textW" RelativePanel.AlignVerticalCenterWith="buttonRegionWDec" Click="buttonRegion_Click" RelativePanel.AlignRightWithPanel="True"/>
+                    </RelativePanel>
+                    <RelativePanel x:Name="panelH" Grid.Column="1" Background="Yellow" Margin="8">
+                        <TextBlock x:Name="textH" Text="Height"/>
+                        <Button x:Name="buttonRegionHDec" Content="-" RelativePanel.Below="textH" Click="buttonRegion_Click"/>
+                        <TextBox x:Name="textBoxRegionH" Text="{x:Bind Path=p.SubtitleRect, Mode=TwoWay, Converter={StaticResource SubtitleRectFormatter}, ConverterParameter=H}" RelativePanel.Below="textH" RelativePanel.AlignVerticalCenterWith="buttonRegionHDec" RelativePanel.AlignHorizontalCenterWithPanel="True"/>
+                        <Button x:Name="buttonRegionHInc" Content="+" RelativePanel.Below="textH" RelativePanel.AlignVerticalCenterWith="buttonRegionHDec" Click="buttonRegion_Click" RelativePanel.AlignRightWithPanel="True"/>
+                    </RelativePanel>
+                </Grid>
+            </Grid>
             <StackPanel Grid.Row="1">
                 <CheckBox x:Name="checkBoxGrayscaleNegative" Content="Grayscale Negative" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
                 <CheckBox x:Name="checkBoxContrast" Content="Contrast" HorizontalAlignment="Left" Margin="12,4" VerticalAlignment="Top" Checked="effects_Changed" Unchecked="effects_Changed"/>
@@ -83,28 +132,6 @@
                 </CheckBox>
                 <Slider x:Name="sliderStampSmoothness" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="6" TickPlacement="TopLeft" TickFrequency="1"/>
                 <Slider x:Name="sliderStampThreshold" Visibility="Collapsed" ValueChanged="sliderStamp_ValueChanged" Maximum="1" StepFrequency="0.01" SmallChange="0.1" TickFrequency="0.05" Value="0.45" TickPlacement="TopLeft"/>
-                <RelativePanel>
-                    <TextBox x:Name="M11" TextChanged="M_TextChanged"/>
-                    <TextBox x:Name="M21" TextChanged="M_TextChanged" RelativePanel.RightOf="M11"/>
-                    <TextBox x:Name="M31" TextChanged="M_TextChanged" RelativePanel.RightOf="M21"/>
-                    <TextBox x:Name="M41" TextChanged="M_TextChanged" RelativePanel.RightOf="M31"/>
-                    <TextBox x:Name="M51" TextChanged="M_TextChanged" RelativePanel.RightOf="M41"/>
-                    <TextBox x:Name="M12" TextChanged="M_TextChanged" RelativePanel.Below="M11"/>
-                    <TextBox x:Name="M22" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M11"/>
-                    <TextBox x:Name="M32" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M11"/>
-                    <TextBox x:Name="M42" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M11"/>
-                    <TextBox x:Name="M52" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M11"/>
-                    <TextBox x:Name="M13" TextChanged="M_TextChanged" RelativePanel.Below="M12"/>
-                    <TextBox x:Name="M23" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M12"/>
-                    <TextBox x:Name="M33" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M12"/>
-                    <TextBox x:Name="M43" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M12"/>
-                    <TextBox x:Name="M53" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M12"/>
-                    <TextBox x:Name="M14" TextChanged="M_TextChanged" RelativePanel.Below="M13"/>
-                    <TextBox x:Name="M24" TextChanged="M_TextChanged" RelativePanel.RightOf="M11" RelativePanel.Below="M13"/>
-                    <TextBox x:Name="M34" TextChanged="M_TextChanged" RelativePanel.RightOf="M21" RelativePanel.Below="M13"/>
-                    <TextBox x:Name="M44" TextChanged="M_TextChanged" RelativePanel.RightOf="M31" RelativePanel.Below="M13"/>
-                    <TextBox x:Name="M54" TextChanged="M_TextChanged" RelativePanel.RightOf="M41" RelativePanel.Below="M13"/>
-                </RelativePanel>
                 <MediaElement x:Name="mediaProceed" Width="384" Height="384" IsMuted="True" CurrentStateChanged="mediaProceed_CurrentStateChanged" AreTransportControlsEnabled="True">
                     <MediaElement.TransportControls>
                         <MediaTransportControls/>

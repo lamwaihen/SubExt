@@ -71,7 +71,7 @@ namespace SubExt.ViewModel
                     _subtitleUIRect.Width * aspectRatio.Width, _subtitleUIRect.Height * aspectRatio.Height);
             }
         }
-        private Rect _subtitleUIRect;
+        private Rect _subtitleUIRect = new Rect(10, 10, 200, 50);
         public int StampSmoothness { get; set; }
         public double StampThreshold { get; set; }
         public StorageFile SelectedImageFile
