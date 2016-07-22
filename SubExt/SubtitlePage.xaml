@@ -24,8 +24,8 @@
             <StackPanel x:Name="panelEdit" Margin="0">
                 <Button x:Name="buttonCloseSelctedImage" Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton x:Name="buttonFloodFill" Content="Flood Fill" Margin="8" Click="buttonFloodFill_Click" IsChecked="True"/>
-                    <RadioButton x:Name="buttonRectangleFill" Content="Rectangle Fill" Margin="8" Click="buttonRectangleFill_Click"/>
+                    <RadioButton x:Name="buttonFloodFill" Content="Flood Fill" Margin="8" IsChecked="True"/>
+                    <RadioButton x:Name="buttonRectangleFill" Content="Rectangle Fill" Margin="8"/>
                     <Button x:Name="buttonUndo" Content="Undo" Margin="8" Click="buttonUndo_Click"/>
                 </StackPanel>
                 <Grid x:Name="canvasEdit" BorderBrush="#FFB2D4EF" BorderThickness="2" Margin="4"/>
