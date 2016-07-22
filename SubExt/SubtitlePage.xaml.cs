@@ -43,6 +43,7 @@ namespace SubExt
         private Payload p;
 
         private Color[] m_pixels;
+        private List<Color[]> m_undoPixels = new List<Color[]>();
         private CanvasBitmap m_bitmapEdit;
         private CanvasControl canvasControlEdit;
         private Rectangle rectFill;
@@ -365,9 +366,6 @@ namespace SubExt
                 Width = w,
                 Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
                 Name = "canvasEdit",
-                Margin = new Thickness(4),
-                BorderThickness = new Thickness(2),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xB2, 0xD4, 0xEF))
             };
             canvasControlEdit.CreateResources += canvasEdit_CreateResources;
             canvasControlEdit.Draw += canvasEdit_Draw;
@@ -379,10 +377,7 @@ namespace SubExt
             rectFill = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0, 0)), Visibility = Visibility.Collapsed };
             Canvas.SetZIndex(rectFill, 1);
             canvasEdit.Children.Add(rectFill);            
-
-            buttonFloodFill.IsChecked = false;
-            buttonRectangleFill.IsChecked = false;
-
+            
             gridEdit.Visibility = Visibility.Visible;
         }
 
@@ -448,6 +443,10 @@ namespace SubExt
             if (buttonFloodFill.IsChecked == true)
             {
                 m_pixels = m_bitmapEdit.GetPixelColors();
+                Color[] undoPixels = new Color[m_pixels.Length];
+                m_pixels.CopyTo(undoPixels, 0);
+                m_undoPixels.Add(undoPixels);
+
                 Helper.FloodFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, Colors.Black, Colors.White);
 
                 m_bitmapEdit.SetPixelColors(m_pixels);
@@ -500,15 +499,13 @@ namespace SubExt
                 }
             }
         }
-
-        private void buttonFloodFill_Click(object sender, RoutedEventArgs e)
+        
+        private void buttonUndo_Click(object sender, RoutedEventArgs e)
         {
-            buttonRectangleFill.IsChecked = false;
-        }
-
-        private void buttonRectangleFill_Click(object sender, RoutedEventArgs e)
-        {
-            buttonFloodFill.IsChecked = false;
+            
+            m_bitmapEdit.SetPixelColors(m_undoPixels[0]);
+            canvasControlEdit.Invalidate();
+            m_undoPixels.RemoveAt(0);
         }
     }
 

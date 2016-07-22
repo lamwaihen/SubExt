@@ -24,10 +24,11 @@
             <StackPanel x:Name="panelEdit" Margin="0">
                 <Button x:Name="buttonCloseSelctedImage" Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
                 <StackPanel Orientation="Horizontal">
-                    <ToggleButton x:Name="buttonFloodFill" Content="Flood Fill" Click="buttonFloodFill_Click"/>
-                    <ToggleButton x:Name="buttonRectangleFill" Content="Rectangle Fill" Click="buttonRectangleFill_Click"/>
+                    <RadioButton x:Name="buttonFloodFill" Content="Flood Fill" Margin="8" Click="buttonFloodFill_Click" IsChecked="True"/>
+                    <RadioButton x:Name="buttonRectangleFill" Content="Rectangle Fill" Margin="8" Click="buttonRectangleFill_Click"/>
+                    <Button x:Name="buttonUndo" Content="Undo" Margin="8" Click="buttonUndo_Click"/>
                 </StackPanel>
-                <Canvas x:Name="canvasEdit"/>
+                <Grid x:Name="canvasEdit" BorderBrush="#FFB2D4EF" BorderThickness="2" Margin="4"/>
                 <!--<canvas:CanvasControl x:Name="canvasEdit" CreateResources="canvasEdit_CreateResources" Draw="canvasEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>-->
                 <!--<Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>-->
             </StackPanel>
@@ -44,7 +45,9 @@
                             <TextBlock x:Name="textBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }}"/>
                             <TextBlock x:Name="textBlockSep" Text=" --> " RelativePanel.RightOf="textBeginTime"/>
                             <TextBlock x:Name="textEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }}" RelativePanel.RightOf="textBlockSep"/>
-                            <Image x:Name="imageSubtitle" Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" RelativePanel.Below="textBeginTime" DoubleTapped="imageSubtitle_DoubleTapped"/>
+                            <Grid BorderBrush="Black" BorderThickness="2" Margin="4" RelativePanel.Below="textBeginTime">
+                                <Image x:Name="imageSubtitle" Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" DoubleTapped="imageSubtitle_DoubleTapped"/>
+                            </Grid>
                         </RelativePanel>
                         <RelativePanel Grid.Column="1">
                             <Button x:Name="buttonInsert" Content="Insert" Margin="4" Click="buttonInsert_Click"/>
