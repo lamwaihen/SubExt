@@ -15,6 +15,7 @@
     <Page.Resources>
         <local:SubtitleRectFormatter x:Key="SubtitleRectFormatter"/>
         <local:SubtitleUIRectFormatter x:Key="SubtitleUIRectFormatter"/>
+        <local:TimeSpanToDoubleConverter x:Key="TimeSpanToDoubleConverter"/>
     </Page.Resources>
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -140,7 +141,7 @@
             </StackPanel>
             <RelativePanel Grid.Row="2">
                 <Button x:Name="buttonProceed" Content="Proceed" Margin="8" Click="buttonProceed_Click" HorizontalAlignment="Center"/>
-                <ProgressBar x:Name="progressPostProcessing" Margin="12,4" SmallChange="1" RelativePanel.Below="buttonProceed" LargeChange="30" MinWidth="384"/>
+                <ProgressBar x:Name="progressPostProcessing" Margin="12,4" SmallChange="1" RelativePanel.Below="buttonProceed" LargeChange="30" MinWidth="384" Maximum="{x:Bind p.Duration, Mode=OneWay, Converter={StaticResource TimeSpanToDoubleConverter}}" Value="{x:Bind p.CurrentFrameTime, Mode=OneWay, Converter={StaticResource TimeSpanToDoubleConverter}}"/>
             </RelativePanel>
         </Grid>
     </Grid>

@@ -18,6 +18,7 @@ using Windows.Media.Editing;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.System.Threading;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input;
@@ -99,7 +100,7 @@ namespace SubExt
         {
             p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();
 
-             var previewEffectPropertySet = new PropertySet();
+            PropertySet previewEffectPropertySet = new PropertySet();
             previewEffectPropertySet["SubtitleRect"] = p.SubtitleRect;
             previewEffectPropertySet["VideoFilename"] = p.Video.Name;
             previewEffectPropertySet["OnFrameProceeded"] = (Action<TimeSpan>)OnFrameProceeded;
@@ -108,9 +109,9 @@ namespace SubExt
             VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
             MediaComposition composition = new MediaComposition();
             composition.Clips.Add(clip);
-          
+
             mediaProceed.SetMediaStreamSource(composition.GenerateMediaStreamSource());
-            mediaProceed.Play();
+            mediaProceed.Play();            
         }
         private void buttonRegion_Click(object sender, RoutedEventArgs e)
         {
@@ -268,6 +269,15 @@ namespace SubExt
             if (ApplicationData.Current.LocalSettings.Values.ContainsKey(p.VideoSize.ToString()))
                 p.SubtitleRect = (Rect)ApplicationData.Current.LocalSettings.Values[p.VideoSize.ToString()];
         }
+        /// <summary>
+        /// Avoid thread deadlock when set property from callback function.
+        /// </summary>
+        /// <param name="timer"></param>
+        /// <param name="time"></param>
+        private void DelayTimerElpasedHandler(ThreadPoolTimer timer, TimeSpan time)
+        {
+            p.CurrentFrameTime = time;
+        }
         private async void OpenPreviewVideo()
         {
             if (p?.Video != null)
@@ -281,8 +291,6 @@ namespace SubExt
                     VideoEncodingProperties videoProps = clip.GetVideoEncodingProperties();
                     p.FrameRate = videoProps.FrameRate;
                     p.Duration = clip.OriginalDuration;
-
-                    progressPostProcessing.Maximum = p.Duration.TotalSeconds / ((double)p.FrameRate.Denominator / p.FrameRate.Numerator);
 
                     MediaComposition composition = new MediaComposition();
                     composition.Clips.Add(clip);
@@ -410,40 +418,58 @@ namespace SubExt
             }
         }
 
-        public void OnFrameProceeded(TimeSpan time)
+        public async void OnFrameProceeded(TimeSpan time)
         {
-            UIThreadAsync(async () =>
+            Debug.WriteLine("Proceeded {0} of {1}", time.TotalMilliseconds, p.Duration.TotalMilliseconds);
+
+            // Use a timer to update property to avoid thread deadlock.
+            ThreadPoolTimer timerPlay = ThreadPoolTimer.CreateTimer((sender) => DelayTimerElpasedHandler(sender, time), TimeSpan.FromMilliseconds(10));
+
+            TimeSpan ts = time.Add(TimeSpan.FromMilliseconds((double)p.FrameRate.Denominator / p.FrameRate.Numerator * 1000));
+            if (false && ts >= p.Duration)
             {
-                progressPostProcessing.Value++;
-
-                if (progressPostProcessing.Value == progressPostProcessing.Maximum)
+                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
+                IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
+                string[] separators = new string[] { "-", ".bmp" };
+                foreach (StorageFile file in files)
                 {
-                    StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
-                    IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
-                    string[] separators = new string[] { "-", ".bmp" };
-                    foreach (StorageFile file in files)
+                    string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+
+                    VideoFrame frame = new VideoFrame()
                     {
-                        string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+                        BeginTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0])),
+                        ImageFile = file
+                    };
+                    if (timestamps.Length == 1)
+                        frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0]));
+                    else
+                        frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[1]));
 
-                        VideoFrame frame = new VideoFrame()
-                        {
-                            BeginTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0])),
-                            ImageFile = file
-                        };
-                        if (timestamps.Length == 1)
-                            frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[0]));
-                        else
-                            frame.EndTime = TimeSpan.FromMilliseconds(Convert.ToDouble(timestamps[1]));
-
-                        Windows.Storage.FileProperties.ImageProperties imgProps = await file.Properties.GetImagePropertiesAsync();
-                        frame.ImageSize = new Size(imgProps.Width, imgProps.Height);
-                        p.VideoFrames.Add(frame);
-                        progressPostProcessing.Value++;
-                    }
-
-                    Frame.Navigate(typeof(SubtitlePage), p);
+                    Windows.Storage.FileProperties.ImageProperties imgProps = await file.Properties.GetImagePropertiesAsync();
+                    frame.ImageSize = new Size(imgProps.Width, imgProps.Height);
+                    p.VideoFrames.Add(frame);
                 }
-            });
+                G.UIThreadExecute(() =>
+                {
+                    Frame.Navigate(typeof(SubtitlePage), p);
+                });
+            }
+        }
+    }
+
+    public class TimeSpanToDoubleConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value == null)
+                return 0;
+
+            TimeSpan ts = (TimeSpan)value;
+            return ts.TotalMilliseconds;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
         }
     }
 

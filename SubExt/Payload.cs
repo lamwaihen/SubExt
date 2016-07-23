@@ -10,27 +10,43 @@ using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
+using Windows.UI.Core;
 using SubExt.Model;
 
 namespace SubExt.ViewModel
 {
     public class Payload : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler PropertyChanged = delegate { };
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
         public StorageFile Video { get; set; }
         public MediaRatio FrameRate { get; set; }
-        public TimeSpan Duration { get; set; }
+        public TimeSpan Duration
+        {
+            get { return _duration; }
+            set
+            {
+                _duration = value;
+                OnPropertyChanged();
+            }
+        }
+        private TimeSpan _duration;
+        public TimeSpan CurrentFrameTime
+        {
+            get { return _currentFrameTime; }
+            set { _currentFrameTime = value; OnPropertyChanged(); }
+        }
+        private TimeSpan _currentFrameTime;
         public Size VideoSize
         {
             get { return _videoSize; }
-            set { _videoSize = value; RaisePropertyChanged(); }
+            set { _videoSize = value; OnPropertyChanged(); }
         }
         private Size _videoSize;
         public Rect VideoPreview
         {
             get { return _videoPreview; }
-            set { _videoPreview = value; RaisePropertyChanged(); }
+            set { _videoPreview = value; OnPropertyChanged(); }
         }
         private Rect _videoPreview;
         public Rect SubtitleRect
@@ -41,7 +57,7 @@ namespace SubExt.ViewModel
                 if (_subtitleRect.Equals(value))
                     return;
                 _subtitleRect = value;
-                RaisePropertyChanged();
+                OnPropertyChanged();
 
                 Size aspectRatio = new Size(_videoSize.Width / _videoPreview.Width, _videoSize.Height / _videoPreview.Height);
                 SubtitleUIRect = new Rect(
@@ -64,7 +80,7 @@ namespace SubExt.ViewModel
                 if (_subtitleUIRect.Equals(value))
                     return;
                 _subtitleUIRect = value;
-                RaisePropertyChanged();
+                OnPropertyChanged();
 
                 Size aspectRatio = new Size(_videoSize.Width / _videoPreview.Width, _videoSize.Height / _videoPreview.Height);
                 SubtitleRect = new Rect((_subtitleUIRect.Left - _videoPreview.Left) * aspectRatio.Width, (_subtitleUIRect.Top - _videoPreview.Top) * aspectRatio.Height,
@@ -77,14 +93,35 @@ namespace SubExt.ViewModel
         public StorageFile SelectedImageFile
         {
             get { return _selectedImageFile; }
-            set { _selectedImageFile = value; RaisePropertyChanged(); }
+            set { _selectedImageFile = value; OnPropertyChanged(); }
         }
         private StorageFile _selectedImageFile;
 
 
-        private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            PropertyChangedEventHandler eventHandler = PropertyChanged;
+            if (eventHandler != null)
+            {
+                G.UIThreadExecute(() => { eventHandler(this, new PropertyChangedEventArgs(propertyName)); });
+            }
+        }
+    }
+
+    public class G
+    {
+        //static public CoreDispatcher UIDispatcher { get; private set; }
+        static public CoreDispatcher UIDispatcher = Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher;
+        static public void UIThreadExecute(Action action)
+        {
+            InnerExecute(action).Wait();
+        }
+        static private async Task InnerExecute(Action action)
+        {
+            if (UIDispatcher.HasThreadAccess)
+                action();
+            else
+                await UIDispatcher.RunAsync(CoreDispatcherPriority.Normal, () => action());
         }
     }
 }
