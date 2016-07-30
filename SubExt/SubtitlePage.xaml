@@ -47,20 +47,21 @@
                 </StackPanel>
                 <Grid x:Name="gridFrameEdit" BorderBrush="#FFB2D4EF" BorderThickness="2" Margin="4">
                     <Canvas x:Name="canvasEdit" Canvas.ZIndex="1">
-                        <Image x:Name="imagePencil" IsHitTestVisible="False" Canvas.ZIndex="1" Visibility="Collapsed">
+                        <Image x:Name="imagePencil" IsHitTestVisible="False" Canvas.ZIndex="1" Visibility="Collapsed" Opacity="0.2"/>
+                        <Rectangle x:Name="rectFill" IsHitTestVisible="False" Canvas.ZIndex="1" Visibility="Collapsed" Opacity="0.2" Fill="Red">
                             <Interactivity:Interaction.Behaviors>
-                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="True">
-                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind imagePencil}" Value="Visible"/>
+                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonRectangleFill.IsChecked, Mode=OneWay}" Value="True">
+                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind rectFill}" Value="Visible"/>
+                                    <Interactions:ChangePropertyAction PropertyName="Width" TargetObject="{x:Bind rectFill}" Value="0"/>
+                                    <Interactions:ChangePropertyAction PropertyName="Height" TargetObject="{x:Bind rectFill}" Value="0"/>
                                 </Interactions:DataTriggerBehavior>
-                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="False">
-                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind imagePencil}" Value="Collapsed"/>
+                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonRectangleFill.IsChecked, Mode=OneWay}" Value="False">
+                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind rectFill}" Value="Collapsed"/>
                                 </Interactions:DataTriggerBehavior>
                             </Interactivity:Interaction.Behaviors>
-                        </Image>
+                        </Rectangle>
                     </Canvas>
                 </Grid>
-                <!--<canvas:CanvasControl x:Name="gridEdit" CreateResources="gridEdit_CreateResources" Draw="gridEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>-->
-                <!--<Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>-->
             </StackPanel>
         </Grid>
         <ListView x:Name="listSubtitles" Grid.Row="0" ItemsSource="{Binding}" SelectionMode="Single">

@@ -44,7 +44,6 @@ namespace SubExt
 
         private CanvasBitmap m_bitmapEdit;
         private CanvasControl canvasControlEdit;
-        private Rectangle rectFill;
         private Point ptCanvasStart;
         private Point m_ptRegionStart;
 
@@ -345,11 +344,6 @@ namespace SubExt
                 canvasControlEdit.RemoveFromVisualTree();
                 canvasControlEdit = null;
             }
-            if (rectFill != null)
-            {
-                canvasEdit.Children.Remove(rectFill);
-                rectFill = null;
-            }
             p.RedoPixels.Clear();
             p.UndoPixels.Clear();
 
@@ -368,21 +362,32 @@ namespace SubExt
                 Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
                 Name = "canvasControlEdit",
             };
-            canvasControlEdit.CreateResources += canvasControlEdit_CreateResources;
             canvasControlEdit.Draw += canvasControlEdit_Draw;
+            canvasControlEdit.CreateResources += canvasControlEdit_CreateResources;
+            canvasControlEdit.PointerEntered += canvasControlEdit_PointerEntered;
+            canvasControlEdit.PointerExited += canvasControlEdit_PointerExited;
             canvasControlEdit.PointerPressed += canvasControlEdit_PointerPressed;
             canvasControlEdit.PointerReleased += canvasControlEdit_PointerReleased;
             canvasControlEdit.PointerMoved += canvasControlEdit_PointerMoved;
             gridFrameEdit.Children.Add(canvasControlEdit);
 
-            rectFill = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x32, 0xFF, 0, 0)), Visibility = Visibility.Collapsed };
-            Canvas.SetZIndex(rectFill, 1);
-            canvasEdit.Children.Add(rectFill);
-
             string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
             imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
             
             gridEdit.Visibility = Visibility.Visible;
+        }
+
+        private void canvasControlEdit_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            imagePencil.Visibility = Visibility.Collapsed;
+        }
+
+        private void canvasControlEdit_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            if (buttonPencilFill.IsChecked == true)
+            {
+                imagePencil.Visibility = Visibility.Visible;
+            }
         }
 
         private void canvasControlEdit_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -464,7 +469,6 @@ namespace SubExt
             canvasControlEdit.CapturePointer(e.Pointer);
 
             rectFill.Width = rectFill.Height = 0;
-            rectFill.Visibility = Visibility.Collapsed;
 
             PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
             m_ptRegionStart = ptrPt.Position;
@@ -491,7 +495,6 @@ namespace SubExt
             {
                 Canvas.SetLeft(rectFill, ptrPt.Position.X);
                 Canvas.SetTop(rectFill, ptrPt.Position.Y);
-                rectFill.Visibility = Visibility.Visible;
             }
             else if (buttonPencilFill.IsChecked == true)
             {
