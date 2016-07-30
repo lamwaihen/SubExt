@@ -37,17 +37,32 @@ namespace SubExt
             //return Color.FromArgb(pixels[current * 4 + 3], pixels[current * 4 + 2], pixels[current * 4 + 1], pixels[current * 4]);
         }
 
-        private static void SetPixel(Color[] pixels, Point pt, Color c)
+        private static bool SetPixel(Color[] pixels, Point pt, Color c)
         {
-            pixels[(int)(pt.X + pt.Y)] = c;
-            //pixels[(int)(x + y * width) * 4] = c.B;
-            //pixels[(int)(x + y * width) * 4 + 1] = c.G;
-            //pixels[(int)(x + y * width) * 4 + 2] = c.R;
-            //pixels[(int)(x + y * width) * 4 + 3] = c.A;
+            bool bChanged = false;
+            int index = (int)(pt.X + pt.Y);
+            if (index < pixels.Length && pixels[index] != c)
+            {
+                pixels[index] = c;
+                bChanged = true;
+            }
+            return bChanged;
         }
 
-        public static void FloodFill(Color[] pixels, int imgWidth, int imgHeight, Point pt, Color targetColor, Color replacementColor)
+        private static bool SetPixel(Color[] pixels, int index, Color c)
         {
+            bool bChanged = false;
+            if (index < pixels.Length && pixels[index] != c)
+            {
+                pixels[index] = c;
+                bChanged = true;
+            }
+            return bChanged;
+        }
+
+        public static bool FloodFill(Color[] pixels, int imgWidth, int imgHeight, Point pt, Color targetColor, Color replacementColor)
+        {
+            int nChanged = 0;
             Queue<Point> q = new Queue<Point>();
             pt.Y *= imgWidth;
             q.Enqueue(pt);
@@ -59,7 +74,7 @@ namespace SubExt
                 Point w = n, e = new Point(n.X + 1, n.Y);
                 while ((w.X >= 0) && ColorMatch(GetPixel(pixels, w), targetColor))
                 {
-                    SetPixel(pixels, w, replacementColor);
+                    nChanged += SetPixel(pixels, w, replacementColor) ? 1 : 0;
                     if ((w.Y > 0) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y - imgWidth)), targetColor))
                         q.Enqueue(new Point(w.X, w.Y - imgWidth));
                     if ((w.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y + imgWidth)), targetColor))
@@ -68,7 +83,7 @@ namespace SubExt
                 }
                 while ((e.X <= imgWidth - 1) && ColorMatch(GetPixel(pixels, e), targetColor))
                 {
-                    SetPixel(pixels,e, replacementColor);
+                    nChanged += SetPixel(pixels,e, replacementColor) ? 1 : 0;
                     if ((e.Y > 0) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y - imgWidth)), targetColor))
                         q.Enqueue(new Point(e.X, e.Y - imgWidth));
                     if ((e.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y + imgWidth)), targetColor))
@@ -76,20 +91,110 @@ namespace SubExt
                     e.X++;
                 }
             }
+            return nChanged > 0;
         }
 
-        public static void RectangleFill(Color[] pixels, int imgWidth, int imgHeight, Point ptStart, Point ptEnd, Color replacementColor)
+        public static bool RectangleFill(Color[] pixels, int imgWidth, int imgHeight, Point ptStart, Point ptEnd, Color replacementColor)
         {
+            int nChanged = 0;
             for (double j = ptStart.Y * imgWidth; j < ptEnd.Y * imgWidth; j += imgWidth) 
             {
                 for (double i = ptStart.X; i < ptEnd.X; i++)
-                {
-                    SetPixel(pixels, new Point(i, j), replacementColor);
+                {                    
+                    nChanged += SetPixel(pixels, new Point(i, j), replacementColor) ? 1 : 0;
                 }
             }
+            return nChanged > 0;
+        }
+
+        public static bool PencilFill(Color[] pixels, int imgWidth, int imgHeight, Point ptStart, int pencilSize, Color replacementColor)
+        {
+            int nChanged = 0;
+            Point pt = GetPencilOffset(pencilSize, ptStart);
+            bool[,] shape = GetPencilShape(pencilSize);            
+
+            for (double j = pt.Y; j < pt.Y + pencilSize; j++)
+            {
+                for (double i = pt.X; i < pt.X + pencilSize; i++)
+                {
+                    if (0 <= i && i < imgWidth && 0 <= j && j < imgHeight && shape[(int)(i - pt.X), (int)(j - pt.Y)])
+                    {
+                        int index = (int)(i + j * imgWidth);
+                        nChanged += SetPixel(pixels, index, replacementColor) ? 1 : 0;
+                    }
+                }
+            }
+
+            return nChanged > 0;
+        }
+
+        public static Point GetPencilOffset(int pencilSize, Point pencilPoint)
+        {
+            Point pt = pencilPoint;
+            switch (pencilSize)
+            {
+                case 2:
+                case 3:
+                    pt.X -= 1;
+                    pt.Y -= 1;
+                    break;
+                case 4:
+                case 5:
+                    pt.X -= 2;
+                    pt.Y -= 2;
+                    break;
+                case 6:
+                case 7:
+                    pt.X -= 3;
+                    pt.Y -= 3;
+                    break;
+                case 8:
+                case 9:
+                    pt.X -= 4;
+                    pt.Y -= 4;
+                    break;
+                case 10:
+                    pt.X -= 5;
+                    pt.Y -= 5;
+                    break;
+            }
+            return pt;
+        }
+
+        public static bool[,] GetPencilShape(int pencilSize)
+        {
+            bool[,] shape = new bool[pencilSize, pencilSize];
+            for (int i = 0; i < pencilSize * pencilSize; i++)
+            {
+                shape[i % pencilSize, i / pencilSize] = true;
+            }
+
+            switch (pencilSize)
+            {
+                case 4:
+                case 5:
+                case 6:
+                    shape[0, 0] = shape[pencilSize - 1, 0] = shape[0, pencilSize - 1] = shape[pencilSize - 1, pencilSize - 1] = false;
+                    break;
+                case 7:
+                case 8:
+                case 9:
+                    shape[0, 0] = shape[pencilSize - 1, 0] = shape[0, pencilSize - 1] = shape[pencilSize - 1, pencilSize - 1] =
+                        shape[1, 0] = shape[pencilSize - 2, 0] = shape[0, 1] = shape[pencilSize - 1, 1] =
+                        shape[0, pencilSize - 2] = shape[pencilSize - 1, pencilSize - 2] = shape[1, pencilSize - 1] = shape[pencilSize - 2, pencilSize - 1] = false;
+                    break;
+                case 10:
+                    shape[0, 0] = shape[pencilSize - 1, 0] = shape[0, pencilSize - 1] = shape[pencilSize - 1, pencilSize - 1] =
+                        shape[1, 0] = shape[2, 0] = shape[pencilSize - 3, 0] = shape[pencilSize - 2, 0] =
+                        shape[0, 1] = shape[pencilSize - 1, 1] = shape[0, 2] = shape[pencilSize - 1, 2] =
+                        shape[0, pencilSize - 3] = shape[pencilSize - 1, pencilSize - 3] = shape[0, pencilSize - 2] = shape[pencilSize - 1, pencilSize - 2] =
+                        shape[1, pencilSize - 1] = shape[2, pencilSize - 1] = shape[pencilSize - 3, pencilSize - 1] = shape[pencilSize - 2, pencilSize - 1] = false;
+                    break;
+            }
+            return shape;
         }
     }
-
+    
     public static class DispatcherHelper
     {
         public static CoreDispatcher UIDispatcher { get; private set; }

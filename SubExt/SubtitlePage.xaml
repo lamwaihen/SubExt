@@ -7,6 +7,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:views="clr-namespace:SubExt.View;assembly="
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:Interactivity="using:Microsoft.Xaml.Interactivity" 
+    xmlns:Interactions="using:Microsoft.Xaml.Interactions.Core"
+    xmlns:Media="using:Microsoft.Xaml.Interactions.Media"
     Unloaded="Page_Unloaded"
     mc:Ignorable="d">
 
@@ -20,16 +23,43 @@
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Grid x:Name="gridEdit" Grid.Row="0" Canvas.ZIndex="1" Margin="40" Background="#FF80B3DA" Visibility="Collapsed" BorderBrush="#FF206396" BorderThickness="2" CornerRadius="1">            
-            <StackPanel x:Name="panelEdit" Margin="0">
+        <Grid x:Name="gridEdit" Grid.Row="0" Canvas.ZIndex="5" Background="#33000000" Visibility="Collapsed">
+            <StackPanel x:Name="panelEdit" Margin="40" Background="#FF80B3DA" BorderBrush="#FF206396" BorderThickness="2" CornerRadius="1">
                 <Button x:Name="buttonCloseSelctedImage" Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
                 <StackPanel Orientation="Horizontal">
                     <RadioButton x:Name="buttonFloodFill" Content="Flood Fill" Margin="8" IsChecked="True"/>
                     <RadioButton x:Name="buttonRectangleFill" Content="Rectangle Fill" Margin="8"/>
+                    <RadioButton x:Name="buttonPencilFill" Content="Pencil" Margin="8"/>
+                    <ComboBox x:Name="comboBoxPencilSize" VerticalAlignment="Center" SelectionChanged="comboBoxPencilSize_SelectionChanged">
+                        <ComboBoxItem Content="1" Tag="1" IsSelected="True"/>
+                        <ComboBoxItem Content="2" Tag="2"/>
+                        <ComboBoxItem Content="3" Tag="3"/>
+                        <ComboBoxItem Content="4" Tag="4"/>
+                        <ComboBoxItem Content="5" Tag="5"/>
+                        <ComboBoxItem Content="6" Tag="6"/>
+                        <ComboBoxItem Content="7" Tag="7"/>
+                        <ComboBoxItem Content="8" Tag="8"/>
+                        <ComboBoxItem Content="9" Tag="9"/>
+                        <ComboBoxItem Content="10" Tag="10"/>
+                    </ComboBox>
                     <Button x:Name="buttonUndo" Content="Undo" Margin="8" Click="buttonUndo_Click"/>
+                    <Button x:Name="buttonRedo" Content="Redo" Margin="8" Click="buttonRedo_Click"/>
                 </StackPanel>
-                <Grid x:Name="canvasEdit" BorderBrush="#FFB2D4EF" BorderThickness="2" Margin="4"/>
-                <!--<canvas:CanvasControl x:Name="canvasEdit" CreateResources="canvasEdit_CreateResources" Draw="canvasEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>-->
+                <Grid x:Name="gridFrameEdit" BorderBrush="#FFB2D4EF" BorderThickness="2" Margin="4">
+                    <Canvas x:Name="canvasEdit" Canvas.ZIndex="1">
+                        <Image x:Name="imagePencil" IsHitTestVisible="False" Canvas.ZIndex="1" Visibility="Collapsed">
+                            <Interactivity:Interaction.Behaviors>
+                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="True">
+                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind imagePencil}" Value="Visible"/>
+                                </Interactions:DataTriggerBehavior>
+                                <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="False">
+                                    <Interactions:ChangePropertyAction PropertyName="Visibility" TargetObject="{x:Bind imagePencil}" Value="Collapsed"/>
+                                </Interactions:DataTriggerBehavior>
+                            </Interactivity:Interaction.Behaviors>
+                        </Image>
+                    </Canvas>
+                </Grid>
+                <!--<canvas:CanvasControl x:Name="gridEdit" CreateResources="gridEdit_CreateResources" Draw="gridEdit_Draw" ClearColor="CornFlowerBlue" Height="100"/>-->
                 <!--<Image x:Name="imageEdit" Visibility="Collapsed" Source="{x:Bind p.SelectedImageFile, Mode=OneWay, Converter={ StaticResource ImageSourceFormatter }}" Margin="8" PointerPressed="imageEdit_PointerPressed" ImageOpened="imageEdit_ImageOpened"/>-->
             </StackPanel>
         </Grid>

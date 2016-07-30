@@ -42,8 +42,6 @@ namespace SubExt
     {
         private Payload p;
 
-        private Color[] m_pixels;
-        private List<Color[]> m_undoPixels = new List<Color[]>();
         private CanvasBitmap m_bitmapEdit;
         private CanvasControl canvasControlEdit;
         private Rectangle rectFill;
@@ -352,6 +350,9 @@ namespace SubExt
                 canvasEdit.Children.Remove(rectFill);
                 rectFill = null;
             }
+            p.RedoPixels.Clear();
+            p.UndoPixels.Clear();
+
             gridEdit.Visibility = Visibility.Collapsed;            
         }
 
@@ -361,51 +362,71 @@ namespace SubExt
             VideoFrame f = i.DataContext as VideoFrame;
             p.SelectedImageFile = f.ImageFile;
 
-            double w = ActualWidth - gridEdit.Margin.Left - gridEdit.Margin.Right;
+            double w = canvasEdit.ActualWidth;
             canvasControlEdit = new CanvasControl {
                 Width = w,
                 Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
-                Name = "canvasEdit",
+                Name = "canvasControlEdit",
             };
-            canvasControlEdit.CreateResources += canvasEdit_CreateResources;
-            canvasControlEdit.Draw += canvasEdit_Draw;
-            canvasControlEdit.PointerPressed += canvasEdit_PointerPressed;
-            canvasControlEdit.PointerReleased += canvasEdit_PointerReleased;
-            canvasControlEdit.PointerMoved += canvasEdit_PointerMoved;
-            canvasEdit.Children.Add(canvasControlEdit);
+            canvasControlEdit.CreateResources += canvasControlEdit_CreateResources;
+            canvasControlEdit.Draw += canvasControlEdit_Draw;
+            canvasControlEdit.PointerPressed += canvasControlEdit_PointerPressed;
+            canvasControlEdit.PointerReleased += canvasControlEdit_PointerReleased;
+            canvasControlEdit.PointerMoved += canvasControlEdit_PointerMoved;
+            gridFrameEdit.Children.Add(canvasControlEdit);
 
-            rectFill = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0, 0)), Visibility = Visibility.Collapsed };
+            rectFill = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x32, 0xFF, 0, 0)), Visibility = Visibility.Collapsed };
             Canvas.SetZIndex(rectFill, 1);
-            canvasEdit.Children.Add(rectFill);            
+            canvasEdit.Children.Add(rectFill);
+
+            string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
+            imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
             
             gridEdit.Visibility = Visibility.Visible;
         }
 
-        private void canvasEdit_PointerMoved(object sender, PointerRoutedEventArgs e)
+        private void canvasControlEdit_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
             PointerPoint ptrPt = e.GetCurrentPoint(canvasControlEdit);
-            if (!ptrPt.Properties.IsLeftButtonPressed || rectFill.Visibility == Visibility.Collapsed)
-                return;
-
             Point pos = ptrPt.Position;
             pos.X += canvasControlEdit.Margin.Left;
             pos.Y += canvasControlEdit.Margin.Top;
 
-            // Set the position of rectangle
-            var x = Math.Min(pos.X, m_ptRegionStart.X);
-            var y = Math.Min(pos.Y, m_ptRegionStart.Y);
+            if (buttonRectangleFill.IsChecked == true)
+            {
+                if (!ptrPt.Properties.IsLeftButtonPressed || rectFill.Visibility == Visibility.Collapsed)
+                    return;
 
-            // Set the dimenssion of the rectangle
-            var w = Math.Max(pos.X, m_ptRegionStart.X) - x;
-            var h = Math.Max(pos.Y, m_ptRegionStart.Y) - y;
+                Rect rect;
+                // Set the position of rectangle
+                rect.X = Math.Min(pos.X, m_ptRegionStart.X);
+                rect.Y = Math.Min(pos.Y, m_ptRegionStart.Y);
 
-            Canvas.SetLeft(rectFill, x);
-            Canvas.SetTop(rectFill, y);
-            rectFill.Width = w;
-            rectFill.Height = h;
+                // Set the dimenssion of the rectangle
+                rect.Width = Math.Max(pos.X, m_ptRegionStart.X) - rect.X;
+                rect.Height = Math.Max(pos.Y, m_ptRegionStart.Y) - rect.Y;
+
+                if (rect.Right > canvasControlEdit.ActualWidth)
+                    rect.Width -= rect.Right - canvasControlEdit.ActualWidth;
+                if (rect.Bottom > canvasControlEdit.ActualHeight)
+                    rect.Height -= rect.Bottom - canvasControlEdit.ActualHeight;
+
+                Canvas.SetLeft(rectFill, rect.X);
+                Canvas.SetTop(rectFill, rect.Y);
+                rectFill.Width = rect.Width;
+                rectFill.Height = rect.Height;
+                Debug.WriteLine(string.Format("rect {0}, pos {1} start {2}", rect.ToString(), pos.ToString(), m_ptRegionStart.ToString()));
+            }
+            else if (buttonPencilFill.IsChecked == true)
+            {
+                int value = Convert.ToInt16((comboBoxPencilSize.SelectedValue as FrameworkElement).Tag);
+                Point pt = Helper.GetPencilOffset(value, pos);
+                Canvas.SetLeft(imagePencil, pt.X);
+                Canvas.SetTop(imagePencil, pt.Y);
+            }
         }
 
-        private void canvasEdit_PointerReleased(object sender, PointerRoutedEventArgs e)
+        private void canvasControlEdit_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             if (m_bitmapEdit == null)
                 return;
@@ -418,18 +439,29 @@ namespace SubExt
                 if (ptCanvasStart == ptCanvasEnd)
                     return;
 
-                m_pixels = m_bitmapEdit.GetPixelColors();
-                Helper.RectangleFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, ptCanvasEnd, Colors.White);
+                Color[] pixels = m_bitmapEdit.GetPixelColors();
+                Color[] undo = (Color[])pixels.Clone();
 
-                m_bitmapEdit.SetPixelColors(m_pixels);
+                if (Helper.RectangleFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, ptCanvasEnd, Colors.White))
+                {
+                    if (p.UndoPixels.Count == 5)
+                        p.UndoPixels.RemoveAt(0);
+                    p.UndoPixels.Add(undo);
+                }
+
+                m_bitmapEdit.SetPixelColors(pixels);
                 canvasControlEdit.Invalidate();
             }
+
+            canvasControlEdit.ReleasePointerCapture(e.Pointer);
         }
 
-        private void canvasEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
+        private void canvasControlEdit_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             if (m_bitmapEdit == null)
                 return;
+
+            canvasControlEdit.CapturePointer(e.Pointer);
 
             rectFill.Width = rectFill.Height = 0;
             rectFill.Visibility = Visibility.Collapsed;
@@ -442,14 +474,17 @@ namespace SubExt
             
             if (buttonFloodFill.IsChecked == true)
             {
-                m_pixels = m_bitmapEdit.GetPixelColors();
-                Color[] undoPixels = new Color[m_pixels.Length];
-                m_pixels.CopyTo(undoPixels, 0);
-                m_undoPixels.Add(undoPixels);
+                Color[] pixels = m_bitmapEdit.GetPixelColors();
+                Color[] undo = (Color[])pixels.Clone();
 
-                Helper.FloodFill(m_pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, Colors.Black, Colors.White);
+                if (Helper.FloodFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, Colors.Black, Colors.White))
+                {
+                    if (p.UndoPixels.Count == 5)
+                        p.UndoPixels.RemoveAt(0);
+                    p.UndoPixels.Add(undo);
+                }
 
-                m_bitmapEdit.SetPixelColors(m_pixels);
+                m_bitmapEdit.SetPixelColors(pixels);
                 canvasControlEdit.Invalidate();
             }
             else if (buttonRectangleFill.IsChecked == true)
@@ -458,14 +493,30 @@ namespace SubExt
                 Canvas.SetTop(rectFill, ptrPt.Position.Y);
                 rectFill.Visibility = Visibility.Visible;
             }
+            else if (buttonPencilFill.IsChecked == true)
+            {
+                Color[] pixels = m_bitmapEdit.GetPixelColors();
+                Color[] undo = (Color[])pixels.Clone();
+
+                int size = Convert.ToInt16((comboBoxPencilSize.SelectedItem as FrameworkElement).Tag);
+                if (Helper.PencilFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, size, Colors.White))
+                {
+                    if (p.UndoPixels.Count == 5)
+                        p.UndoPixels.RemoveAt(0);
+                    p.UndoPixels.Add(undo);
+                }
+
+                m_bitmapEdit.SetPixelColors(pixels);
+                canvasControlEdit.Invalidate();
+            }
         }  
-        private void canvasEdit_CreateResources(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
+        private void canvasControlEdit_CreateResources(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
         {
             // Create any resources needed by the Draw event handler.
             // Asynchronous work can be tracked with TrackAsyncAction:
-            args.TrackAsyncAction(canvasEdit_CreateResourcesAsync(sender).AsAsyncAction());
+            args.TrackAsyncAction(canvasControlEdit_CreateResourcesAsync(sender).AsAsyncAction());
         }
-        private async Task canvasEdit_CreateResourcesAsync(CanvasControl sender)
+        private async Task canvasControlEdit_CreateResourcesAsync(CanvasControl sender)
         {
             using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
             {
@@ -475,7 +526,7 @@ namespace SubExt
                 }
             }
         }
-        private async void canvasEdit_Draw(CanvasControl sender, CanvasDrawEventArgs args)
+        private async void canvasControlEdit_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
             if (m_bitmapEdit == null)
             {
@@ -499,13 +550,43 @@ namespace SubExt
                 }
             }
         }
-        
+
+        private void buttonRedo_Click(object sender, RoutedEventArgs e)
+        {
+            if (p.RedoPixels.Count > 0)
+            {
+                int lastIndex = p.RedoPixels.Count - 1;
+                m_bitmapEdit.SetPixelColors(p.RedoPixels[lastIndex]);
+                canvasControlEdit.Invalidate();
+
+                if (p.UndoPixels.Count == 5)
+                    p.UndoPixels.RemoveAt(0);
+                p.UndoPixels.Add(p.RedoPixels[lastIndex]);
+                p.RedoPixels.RemoveAt(lastIndex);
+            }
+        }
         private void buttonUndo_Click(object sender, RoutedEventArgs e)
         {
-            
-            m_bitmapEdit.SetPixelColors(m_undoPixels[0]);
-            canvasControlEdit.Invalidate();
-            m_undoPixels.RemoveAt(0);
+            if (p.UndoPixels.Count > 0)
+            {
+                int lastIndex = p.UndoPixels.Count - 1;
+                m_bitmapEdit.SetPixelColors(p.UndoPixels[lastIndex]);
+                canvasControlEdit.Invalidate();
+
+                if (p.RedoPixels.Count == 5)
+                    p.RedoPixels.RemoveAt(0);
+                p.RedoPixels.Add(p.UndoPixels[lastIndex]);
+                p.UndoPixels.RemoveAt(lastIndex);
+            }
+        }
+
+        private void comboBoxPencilSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (imagePencil != null)
+            {
+                string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
+                imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
+            }
         }
     }
 

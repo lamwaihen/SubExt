@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
+using Windows.UI;
 using Windows.UI.Core;
 using SubExt.Model;
 
@@ -96,7 +97,19 @@ namespace SubExt.ViewModel
             set { _selectedImageFile = value; OnPropertyChanged(); }
         }
         private StorageFile _selectedImageFile;
-
+        
+        public List<Color[]> RedoPixels
+        {
+            get { return _redoPixels; }
+            set { _redoPixels = value; OnPropertyChanged(); }
+        }
+        private List<Color[]> _redoPixels = new List<Color[]>(5);
+        public List<Color[]> UndoPixels
+        {
+            get { return _undoPixels; }
+            set { _undoPixels = value; OnPropertyChanged(); }
+        }
+        private List<Color[]> _undoPixels = new List<Color[]>(5);
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
