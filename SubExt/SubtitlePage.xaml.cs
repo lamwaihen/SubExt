@@ -65,6 +65,11 @@ namespace SubExt
             
         }
 
+        private void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            gridEdit.Visibility = Visibility.Collapsed;
+        }
+
         void Page_Unloaded(object sender, RoutedEventArgs e)
         {
             if (canvasControlEdit != null)
@@ -336,8 +341,6 @@ namespace SubExt
                 // Force to refresh UI
                 VideoFrame frame = listSubtitles.SelectedItem as VideoFrame;
                 frame.ImageFile = frame.ImageFile;
-
-                p.SelectedImageFile = null;
             }
             if (canvasControlEdit != null)
             {
@@ -352,12 +355,9 @@ namespace SubExt
 
         private void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
-            Image i = sender as Image;
-            VideoFrame f = i.DataContext as VideoFrame;
-            p.SelectedImageFile = f.ImageFile;
-
             double w = canvasEdit.ActualWidth;
-            canvasControlEdit = new CanvasControl {
+            canvasControlEdit = new CanvasControl
+            {
                 Width = w,
                 Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
                 Name = "canvasControlEdit",
@@ -373,7 +373,8 @@ namespace SubExt
 
             string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
             imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
-            
+
+            rectFill.Visibility = Visibility.Collapsed;
             gridEdit.Visibility = Visibility.Visible;
         }
 
@@ -529,15 +530,8 @@ namespace SubExt
                 }
             }
         }
-        private async void canvasControlEdit_Draw(CanvasControl sender, CanvasDrawEventArgs args)
+        private void canvasControlEdit_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
-            if (m_bitmapEdit == null)
-            {
-                using (IRandomAccessStream stream = await p.SelectedImageFile?.OpenAsync(FileAccessMode.Read))
-                {
-                    m_bitmapEdit = await CanvasBitmap.LoadAsync(sender, stream);
-                }
-            }
             Rect rtSource = new Rect(0, 0, m_bitmapEdit.SizeInPixels.Width, m_bitmapEdit.SizeInPixels.Height);
             Rect rtDest = new Rect(0, 0, canvasControlEdit.ActualWidth, canvasControlEdit.ActualHeight);
             args.DrawingSession.DrawImage(m_bitmapEdit, rtDest, rtSource);
@@ -590,6 +584,12 @@ namespace SubExt
                 string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
                 imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
             }
+        }
+
+        private void listSubtitles_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            VideoFrame f = listSubtitles.SelectedItem as VideoFrame;
+            p.SelectedImageFile = f.ImageFile;            
         }
     }
 
