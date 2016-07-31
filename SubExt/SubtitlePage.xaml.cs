@@ -425,10 +425,25 @@ namespace SubExt
             }
             else if (buttonPencilFill.IsChecked == true)
             {
+                // Set position of overlay
                 int value = Convert.ToInt16((comboBoxPencilSize.SelectedValue as FrameworkElement).Tag);
                 Point pt = Helper.GetPencilOffset(value, pos);
                 Canvas.SetLeft(imagePencil, pt.X);
                 Canvas.SetTop(imagePencil, pt.Y);
+
+                // If button pressed, we will fill color
+                if (!ptrPt.Properties.IsLeftButtonPressed || imagePencil.Visibility == Visibility.Collapsed)
+                    return;
+
+                Point ptFill = ptCanvasStart = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasControlEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasControlEdit.ActualHeight * ptrPt.Position.Y));
+                Color[] pixels = m_bitmapEdit.GetPixelColors();
+
+                int size = Convert.ToInt16((comboBoxPencilSize.SelectedItem as FrameworkElement).Tag);
+                bool result = Helper.PencilFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptFill, size, Colors.White);
+                
+                Debug.WriteLine(string.Format("pt {0} size {1}", ptFill.ToString(), size));
+                m_bitmapEdit.SetPixelColors(pixels);
+                canvasControlEdit.Invalidate();
             }
         }
 

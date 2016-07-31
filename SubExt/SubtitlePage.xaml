@@ -42,6 +42,14 @@
                         <ComboBoxItem Content="8" Tag="8"/>
                         <ComboBoxItem Content="9" Tag="9"/>
                         <ComboBoxItem Content="10" Tag="10"/>
+                        <Interactivity:Interaction.Behaviors>
+                            <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="True">
+                                <Interactions:ChangePropertyAction PropertyName="IsEnabled" TargetObject="{x:Bind comboBoxPencilSize}" Value="True"/>
+                            </Interactions:DataTriggerBehavior>
+                            <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="False">
+                                <Interactions:ChangePropertyAction PropertyName="IsEnabled" TargetObject="{x:Bind comboBoxPencilSize}" Value="False"/>
+                            </Interactions:DataTriggerBehavior>
+                        </Interactivity:Interaction.Behaviors>
                     </ComboBox>
                     <Button x:Name="buttonUndo" Content="Undo" Margin="8" Click="buttonUndo_Click"/>
                     <Button x:Name="buttonRedo" Content="Redo" Margin="8" Click="buttonRedo_Click"/>
