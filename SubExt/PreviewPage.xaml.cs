@@ -102,7 +102,7 @@ namespace SubExt
 
             PropertySet previewEffectPropertySet = new PropertySet();
             previewEffectPropertySet["SubtitleRect"] = p.SubtitleRect;
-            previewEffectPropertySet["VideoFilename"] = p.Video.Name;
+            previewEffectPropertySet["VideoFilename"] = p.Name;
             previewEffectPropertySet["OnFrameProceeded"] = (Action<TimeSpan>)OnFrameProceeded;
             MediaClip clip = await MediaClip.CreateFromFileAsync(p.Video);
             clip.VideoEffectDefinitions.Add(new VideoEffectDefinition(typeof(ExtractVideoEffect).FullName, previewEffectPropertySet));
@@ -391,11 +391,14 @@ namespace SubExt
         {
             if (mediaProceed.CurrentState == Windows.UI.Xaml.Media.MediaElementState.Paused)
             {
-                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
+                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Name);
                 IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
                 string[] separators = new string[] { "-", ".bmp" };
                 foreach (StorageFile file in files)
                 {
+                    if (!char.IsDigit(file.Name, 0))
+                        continue;
+
                     string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
 
                     VideoFrame frame = new VideoFrame()
@@ -428,7 +431,7 @@ namespace SubExt
             TimeSpan ts = time.Add(TimeSpan.FromMilliseconds((double)p.FrameRate.Denominator / p.FrameRate.Numerator * 1000));
             if (false && ts >= p.Duration)
             {
-                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Video.Name);
+                StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Name);
                 IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
                 string[] separators = new string[] { "-", ".bmp" };
                 foreach (StorageFile file in files)

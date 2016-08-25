@@ -154,8 +154,13 @@ namespace SubExt
                     pt.Y -= 4;
                     break;
                 case 10:
+                case 11:
                     pt.X -= 5;
                     pt.Y -= 5;
+                    break;
+                case 12:
+                    pt.X -= 6;
+                    pt.Y -= 6;
                     break;
             }
             return pt;
@@ -189,6 +194,24 @@ namespace SubExt
                         shape[0, 1] = shape[pencilSize - 1, 1] = shape[0, 2] = shape[pencilSize - 1, 2] =
                         shape[0, pencilSize - 3] = shape[pencilSize - 1, pencilSize - 3] = shape[0, pencilSize - 2] = shape[pencilSize - 1, pencilSize - 2] =
                         shape[1, pencilSize - 1] = shape[2, pencilSize - 1] = shape[pencilSize - 3, pencilSize - 1] = shape[pencilSize - 2, pencilSize - 1] = false;
+                    break;
+                case 11:
+                    shape[0, 0] = shape[1, 0] = shape[2, 0] = shape[pencilSize - 3, 0] = shape[pencilSize - 2, 0] = shape[pencilSize - 1, 0] =
+                        shape[0, 1] = shape[1, 1] = shape[pencilSize - 2, 1] = shape[pencilSize - 1, 1] =
+                        shape[0, 2] = shape[pencilSize - 1, 2] =
+                        shape[0, pencilSize - 3] = shape[pencilSize - 1, pencilSize - 3] =
+                        shape[0, pencilSize - 2] = shape[1, pencilSize - 2] = shape[pencilSize - 2, pencilSize - 2] = shape[pencilSize - 1, pencilSize - 2] =
+                        shape[0, pencilSize - 1] = shape[1, pencilSize - 1] = shape[2, pencilSize - 1] = shape[pencilSize - 3, pencilSize - 1] = shape[pencilSize - 2, pencilSize - 1] = shape[pencilSize - 1, pencilSize - 1] = false;
+                    break;
+                case 12:
+                    shape[0, 0] = shape[1, 0] = shape[2, 0] = shape[3, 0] = shape[pencilSize - 4, 0] = shape[pencilSize - 3, 0] = shape[pencilSize - 2, 0] = shape[pencilSize - 1, 0] =
+                        shape[0, 1] = shape[1, 1] = shape[pencilSize - 2, 1] = shape[pencilSize - 1, 1] =
+                        shape[0, 2] = shape[pencilSize - 1, 2] =
+                        shape[0, 3] = shape[pencilSize - 1, 3] =
+                        shape[0, pencilSize - 4] = shape[pencilSize - 1, pencilSize - 4] =
+                        shape[0, pencilSize - 3] = shape[pencilSize - 1, pencilSize - 3] =
+                        shape[0, pencilSize - 2] = shape[1, pencilSize - 2] = shape[pencilSize - 2, pencilSize - 2] = shape[pencilSize - 1, pencilSize - 2] =
+                        shape[0, pencilSize - 1] = shape[1, pencilSize - 1] = shape[2, pencilSize - 1] = shape[3, pencilSize - 1] = shape[pencilSize - 4, pencilSize - 1] = shape[pencilSize - 3, pencilSize - 1] = shape[pencilSize - 2, pencilSize - 1] = shape[pencilSize - 1, pencilSize - 1] = false;
                     break;
             }
             return shape;

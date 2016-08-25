@@ -8,8 +8,9 @@
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Grid x:Name="gridMain" Visibility="Visible">
+        <RelativePanel x:Name="gridMain" Visibility="Visible">
             <Button x:Name="buttonOpenVideo" Content="Open Video" Click="buttonOpenVideo_Click"/>
-        </Grid>
+            <StackPanel x:Name="panelProjects" RelativePanel.Below="buttonOpenVideo"></StackPanel>
+        </RelativePanel>
     </Grid>
 </Page>

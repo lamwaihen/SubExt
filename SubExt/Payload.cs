@@ -20,6 +20,8 @@ namespace SubExt.ViewModel
     {
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
+        public string Name { get; set; }
+        public string DisplayName { get; set; }
         public StorageFile Video { get; set; }
         public MediaRatio FrameRate { get; set; }
         public TimeSpan Duration

@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
+using Windows.Media.Ocr;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
@@ -197,7 +198,7 @@ namespace SubExt
             // Dropdown of file types the user can save the file as
             savePicker.FileTypeChoices.Add("SRT", new List<string>() { ".srt" });
             // Default file name if the user does not type one in or select a file to replace
-            savePicker.SuggestedFileName = p.Video.DisplayName;
+            savePicker.SuggestedFileName = p.DisplayName;
 
             StorageFile file = await savePicker.PickSaveFileAsync();
             if (file != null)
@@ -214,119 +215,124 @@ namespace SubExt
 
         private async void buttonSaveAsImg_Click(object sender, RoutedEventArgs e)
         {
-            FileSavePicker savePicker = new FileSavePicker();
-            savePicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
-            // Dropdown of file types the user can save the file as
-            savePicker.FileTypeChoices.Add("JPG", new List<string>() { ".jpg" });
-            // Default file name if the user does not type one in or select a file to replace
-            savePicker.SuggestedFileName = p.Video.DisplayName;
-
-            StorageFile file = await savePicker.PickSaveFileAsync();
-            if (file != null)
+            FolderPicker folderPicker = new FolderPicker();
+            folderPicker.SuggestedStartLocation = PickerLocationId.Downloads;
+            folderPicker.FileTypeFilter.Add("*");
+            StorageFolder folder = await folderPicker.PickSingleFolderAsync();
+            if (folder != null)
             {
-                CanvasDevice device = new CanvasDevice();
-                CanvasRenderTarget renderer = null;
-                CanvasTextFormat font = null;
-                Rect rtSource = Rect.Empty, rtDest = Rect.Empty, rtText = Rect.Empty;
-
-                for (int i = 0; i < p.VideoFrames.Count; i++)
-                {
-                    using (IRandomAccessStream stream = await p.VideoFrames[i].ImageFile.OpenAsync(FileAccessMode.Read))
-                    {
-                        CanvasBitmap bitmap = await CanvasBitmap.LoadAsync(device, stream);
-
-                        if (rtSource.IsEmpty)
-                            rtSource = rtText = rtDest = new Rect(0, 0, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
-                        if (renderer == null)
-                            renderer = new CanvasRenderTarget(device, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height * 2 * p.VideoFrames.Count, bitmap.Dpi);
-                        if (font == null)
-                            font = new CanvasTextFormat { FontFamily = "Segoe UI", FontSize = (bitmap.SizeInPixels.Height - 2) * 76 / bitmap.Dpi };
-
-                        using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
-                        {
-                            rtText.Y = bitmap.SizeInPixels.Height * i * 2;
-                            ds.FillRectangle(rtText, Colors.White);
-                            ds.DrawText(string.Format("#{0}", i), rtText, Colors.Black, font);
-                            rtDest.Y = (bitmap.SizeInPixels.Height * i * 2) + bitmap.SizeInPixels.Height;
-                            ds.DrawImage(bitmap, rtDest, rtSource);
-                        }
-                    }
-                }
-
-                using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
-                {
-                    await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
-                }
+                // Application now has read/write access to all contents in the picked folder
+                // (including other sub-folder contents)
+                Windows.Storage.AccessCache.StorageApplicationPermissions.
+                FutureAccessList.AddOrReplace("PickedFolderToken", folder);
             }
+            else
+            {
+                return;
+            }
+
+            List<StorageFile> files = await SaveImagesAsync(folder);
         }
 
         private async void buttonStartOcr_Click(object sender, RoutedEventArgs e)
         {
-            UserCredential credential = null;
-            try
-            {
-                credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    new Uri("ms-appx:///Assets/client_secret.json"), 
-                    new[] { DriveService.Scope.DriveFile }, "user", CancellationToken.None);
-            }
-            catch (AggregateException ex)
-            {
-                Debug.Write("Credential failed, " + ex.Message);
-            }
-
-            // Create Drive API service.
-            DriveService service = new DriveService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = credential,
-                ApplicationName = "Subtitle Extractor",
-            });
-
-            // First create the folder
-            File folderMetadata = new File();
-            folderMetadata.Name = p.Video.Name;
-            folderMetadata.MimeType = "application/vnd.google-apps.folder";
-            //folderMetadata.Parents = new List<string>() { "appDataFolder" };
-            FilesResource.CreateRequest requestCreate = service.Files.Create(folderMetadata);
-            requestCreate.Fields = "id";
-            File folder = await requestCreate.ExecuteAsync();
-            Debug.WriteLine("Folder ID: " + folder.Id);
+            OcrEngine ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
 
             foreach (VideoFrame frame in p.VideoFrames)
             {
-                // First upload the image file
-                File fileMetadata = new File();
-                fileMetadata.Name = frame.ImageFile.Name;
-                fileMetadata.Parents = new List<string> { folder.Id };
-                FilesResource.CreateMediaUpload requestUpload;
+                SoftwareBitmap softwareBitmap;
 
-                using (System.IO.FileStream stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
+                using (IRandomAccessStream stream = await frame.ImageFile.OpenAsync(FileAccessMode.Read))
                 {
-                    requestUpload = service.Files.Create(fileMetadata, stream, "image/bmp");
-                    requestUpload.Fields = "id";
-                    requestUpload.Upload();
+                    // Create the decoder from the stream
+                    BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+                    // Get the SoftwareBitmap representation of the file
+                    softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+                    var ocrResult = await ocrEngine.RecognizeAsync(softwareBitmap);
+                    frame.Subtitle = ocrResult.Text.Replace(" ", "");
                 }
-                File imgFile = requestUpload.ResponseBody;
-                Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), imgFile.Id));
-
-                // Then copy the image file as document
-                File textMetadata = new File();
-                textMetadata.Name = frame.ImageFile.Name;
-                textMetadata.Parents = new List<string> { folder.Id };
-                textMetadata.MimeType = "application/vnd.google-apps.document";
-                FilesResource.CopyRequest requestCopy = service.Files.Copy(textMetadata, imgFile.Id);
-                requestCopy.Fields = "id";
-                requestCopy.OcrLanguage = "zh";
-                File textFile = await requestCopy.ExecuteAsync();
-
-                // Finally export the document as text
-                FilesResource.ExportRequest requestExport = service.Files.Export(textFile.Id, "text/plain");
-                string text = await requestExport.ExecuteAsync();
-                frame.Subtitle = text.Substring(text.LastIndexOf("\r\n\r\n") + 4);
             }
-
-            FilesResource.DeleteRequest requestDelete = service.Files.Delete(folder.Id);
-            string result = await requestDelete.ExecuteAsync();
         }
+
+        //private async void buttonStartOcr_Click(object sender, RoutedEventArgs e)
+        //{
+        //    UserCredential credential = null;
+        //    try
+        //    {
+        //        credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+        //            new Uri("ms-appx:///Assets/client_secret.json"), 
+        //            new[] { DriveService.Scope.DriveFile }, "user", CancellationToken.None);
+        //    }
+        //    catch (AggregateException ex)
+        //    {
+        //        Debug.Write("Credential failed, " + ex.Message);
+        //    }
+
+        //    // Create Drive API service.
+        //    DriveService service = new DriveService(new BaseClientService.Initializer()
+        //    {
+        //        HttpClientInitializer = credential,
+        //        ApplicationName = "Subtitle Extractor",
+        //    });
+
+        //    // First create the folder
+        //    File folderMetadata = new File();
+        //    folderMetadata.Name = p.Video.Name;
+        //    folderMetadata.MimeType = "application/vnd.google-apps.folder";
+        //    //folderMetadata.Parents = new List<string>() { "appDataFolder" };
+        //    FilesResource.CreateRequest requestCreate = service.Files.Create(folderMetadata);
+        //    requestCreate.Fields = "id";
+        //    File folder = await requestCreate.ExecuteAsync();
+        //    Debug.WriteLine("Folder ID: " + folder.Id);
+
+        //    foreach (VideoFrame frame in p.VideoFrames)
+        //    {
+        //        try
+        //        { 
+        //            // First upload the image file
+        //            File fileMetadata = new File();
+        //            fileMetadata.Name = frame.ImageFile.Name;
+        //            fileMetadata.Parents = new List<string> { folder.Id };
+        //            FilesResource.CreateMediaUpload requestUpload;
+
+        //            using (System.IO.FileStream stream = new System.IO.FileStream(frame.ImageFile.Path, System.IO.FileMode.Open))
+        //            {
+        //                requestUpload = service.Files.Create(fileMetadata, stream, "image/bmp");
+        //                requestUpload.Fields = "id";
+        //                requestUpload.Upload();
+        //            }
+        //            File imgFile = requestUpload.ResponseBody;
+        //            Debug.WriteLine(string.Format("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss.fff"), imgFile.Id));
+
+        //            // Then copy the image file as document
+        //            File textMetadata = new File();
+        //            textMetadata.Name = frame.ImageFile.Name;
+        //            textMetadata.Parents = new List<string> { folder.Id };
+        //            textMetadata.MimeType = "application/vnd.google-apps.document";
+        //            FilesResource.CopyRequest requestCopy = service.Files.Copy(textMetadata, imgFile.Id);
+        //            requestCopy.Fields = "id";
+        //            requestCopy.OcrLanguage = "zh-TW";
+        //            File textFile = await requestCopy.ExecuteAsync();
+
+        //            // Finally export the document as text
+        //            FilesResource.ExportRequest requestExport = service.Files.Export(textFile.Id, "text/plain");
+        //            string text = await requestExport.ExecuteAsync();
+
+        //            frame.Subtitle = text.Substring(text.LastIndexOf("\r\n\r\n") + 4);
+        //            listSubtitles.SelectedItem = frame;
+        //            listSubtitles.ScrollIntoView(frame);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            Debug.WriteLine(ex.Message);
+        //        }
+        //    }
+
+        //    FilesResource.DeleteRequest requestDelete = service.Files.Delete(folder.Id);
+        //    string result = await requestDelete.ExecuteAsync();
+        //}
 
         private async void buttonCloseSelctedImage_Click(object sender, RoutedEventArgs e)
         {
@@ -355,11 +361,12 @@ namespace SubExt
 
         private void imageSubtitle_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
+            VideoFrame frame = (sender as FrameworkElement)?.DataContext as VideoFrame;
             double w = canvasEdit.ActualWidth;
             canvasControlEdit = new CanvasControl
             {
                 Width = w,
-                Height = p.SubtitleRect.Height / p.SubtitleRect.Width * w,
+                Height = frame.ImageSize.Height / frame.ImageSize.Width * w,
                 Name = "canvasControlEdit",
             };
             canvasControlEdit.Draw += canvasControlEdit_Draw;
@@ -374,7 +381,8 @@ namespace SubExt
             string value = (comboBoxPencilSize.SelectedValue as FrameworkElement).Tag.ToString();
             imagePencil.Source = new BitmapImage(new Uri(string.Format("ms-appx:///Images/Pencil_{0}.png", value)));
 
-            rectFill.Visibility = Visibility.Collapsed;
+            rectFill.Width = rectFill.Height = 0;
+            ptCanvasStart = new Point(-1, -1);
             gridEdit.Visibility = Visibility.Visible;
         }
 
@@ -457,7 +465,7 @@ namespace SubExt
 
             if (buttonRectangleFill.IsChecked == true)
             {
-                if (ptCanvasStart == ptCanvasEnd)
+                if ((ptCanvasStart.X == -1 && ptCanvasStart.Y == -1) || ptCanvasStart == ptCanvasEnd || rectFill.Visibility == Visibility.Collapsed)
                     return;
 
                 Color[] pixels = m_bitmapEdit.GetPixelColors();
@@ -604,7 +612,78 @@ namespace SubExt
         private void listSubtitles_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             VideoFrame f = listSubtitles.SelectedItem as VideoFrame;
-            p.SelectedImageFile = f.ImageFile;            
+            p.SelectedImageFile = f?.ImageFile;            
+        }
+
+        private async Task<List<StorageFile>> SaveImagesAsync(StorageFolder folder)
+        {
+            List<StorageFile> files = new List<StorageFile>();
+            
+            // Initialize device
+            CanvasDevice device = new CanvasDevice();
+            CanvasRenderTarget renderer = null;
+            CanvasTextFormat font = null;
+            Rect rtSource = Rect.Empty, rtDest = Rect.Empty, rtText = Rect.Empty;
+            int fileCount = 0;
+
+            StorageFile file = await folder.CreateFileAsync(p.DisplayName + "." + fileCount.ToString() + ".jpg", CreationCollisionOption.ReplaceExisting);
+
+            int subCount = 0;
+            int maxSubPerImage = 0;
+            for (int i = 0; i < p.VideoFrames.Count; i++)
+            {
+                if (file == null)
+                {
+                    file = await folder.CreateFileAsync(p.DisplayName + "." + fileCount.ToString() + ".jpg", CreationCollisionOption.ReplaceExisting);
+                    subCount = 0;
+
+                    renderer = null;
+                    rtSource = Rect.Empty;
+                }
+
+                using (IRandomAccessStream stream = await p.VideoFrames[i].ImageFile.OpenAsync(FileAccessMode.Read))
+                using (CanvasBitmap bitmap = await CanvasBitmap.LoadAsync(device, stream))
+                {
+                    if (maxSubPerImage == 0)
+                        maxSubPerImage = (int)(device.MaximumBitmapSizeInPixels / bitmap.SizeInPixels.Height / 2 / 4);
+
+                    if (rtSource.IsEmpty)
+                        rtSource = rtText = rtDest = new Rect(0, 0, bitmap.SizeInPixels.Width, bitmap.SizeInPixels.Height);
+                    if (renderer == null)
+                        renderer = new CanvasRenderTarget(device, bitmap.SizeInPixels.Width, device.MaximumBitmapSizeInPixels / 4, bitmap.Dpi);
+                    if (font == null)
+                        font = new CanvasTextFormat { FontFamily = "Courier New", FontSize = (bitmap.SizeInPixels.Height * 0.75f) * 76 / bitmap.Dpi, HorizontalAlignment = CanvasHorizontalAlignment.Center };
+
+                    using (CanvasDrawingSession ds = renderer.CreateDrawingSession())
+                    {
+                        rtText.Y = bitmap.SizeInPixels.Height * subCount * 2;// + (bitmap.SizeInPixels.Height * 0.25f);
+                        ds.FillRectangle(rtText, Colors.White);
+                        rtText.Y += (bitmap.SizeInPixels.Height * 0.4f);
+                        rtText.Height = bitmap.SizeInPixels.Height * 0.2f;
+                        ds.FillRectangle(rtText, Colors.Black);
+                        rtText.Y += rtText.Height;
+                        rtText.Height = bitmap.SizeInPixels.Height * 0.4f;
+                        ds.FillRectangle(rtText, Colors.White);
+                        //ds.DrawText(string.Format("<{0}>", i), rtText, Colors.Black, font);
+                        rtDest.Y = (bitmap.SizeInPixels.Height * subCount * 2) + bitmap.SizeInPixels.Height;
+                        ds.DrawImage(bitmap, rtDest, rtSource);
+                        subCount++;
+                    }
+                }
+
+                if (subCount == maxSubPerImage || i == p.VideoFrames.Count - 1)
+                {
+                    using (IRandomAccessStream outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                    {
+                        await renderer.SaveAsync(outStream, CanvasBitmapFileFormat.Jpeg);
+                        files.Add(file);
+                        file = null;
+                        fileCount++;
+                    }
+                }
+            }
+
+            return files;
         }
     }
 
