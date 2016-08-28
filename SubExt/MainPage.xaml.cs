@@ -47,6 +47,8 @@ namespace SubExt
         private async void buttonOpenProjects_Click(object sender, RoutedEventArgs e)
         {
             StorageFolder folder = (StorageFolder)((Button)sender).DataContext;
+            p.Name = folder.Name;
+            p.DisplayName = folder.Name.Substring(0, folder.Name.LastIndexOf("."));
             IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
             string[] separators = new string[] { "-", ".bmp" };
             p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();
@@ -83,7 +85,11 @@ namespace SubExt
             openPicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
             p.Video = await openPicker.PickSingleFileAsync();
             if (p.Video != null)
+            {
+                p.Name = p.Video.Name;
+                p.DisplayName = p.Video.DisplayName;
                 Frame.Navigate(typeof(PreviewPage), p);
+            }
         }
     }
 }

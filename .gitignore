@@ -49,3 +49,5 @@ Temporary Items
 SubExt/bin
 SubExt/obj
 /Effects/bin/x64/Debug
+/SubExt/VideoEffects/bin/x64/Debug
+/SubExt/VideoEffects/obj/x64/Debug
