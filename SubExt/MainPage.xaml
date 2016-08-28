@@ -7,10 +7,28 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <RelativePanel x:Name="gridMain" Visibility="Visible">
-            <Button x:Name="buttonOpenVideo" Content="Open Video" Click="buttonOpenVideo_Click"/>
-            <StackPanel x:Name="panelProjects" RelativePanel.Below="buttonOpenVideo"></StackPanel>
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                <GradientStop Color="#C1D1DD" Offset="0"/>
+                <GradientStop Color="White" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+        <Grid x:Name="gridProgress" Background="#02000000" Visibility="Collapsed" Canvas.ZIndex="1">
+            <Grid Background="#C1D1DD" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="16">
+                <ProgressRing IsActive="True" Height="100" Width="100" Margin="8"/>
+            </Grid>
+        </Grid>
+        <RelativePanel x:Name="gridMain" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock x:Name="textOpenVideo" Text="Open video file to start new project" Margin="4" RelativePanel.AlignHorizontalCenterWithPanel="True" FontSize="24"/>
+            <Button x:Name="buttonOpenVideo" Content="Open Video" Click="buttonOpenVideo_Click" Margin="4" RelativePanel.Below="textOpenVideo" RelativePanel.AlignHorizontalCenterWithPanel="True" FontSize="24"/>
+            <Line x:Name="lineSep" StrokeThickness="4" X1="0" X2="{Binding ActualWidth, ElementName=gridMain, Mode=OneWay}" Y1="0" Y2="0" RelativePanel.Below="buttonOpenVideo" Stroke="#FF206396" Margin="8"/>
+            <TextBlock x:Name="textOpenProject" Text="Or, select a project in progress" Margin="4" RelativePanel.Below="lineSep" RelativePanel.AlignHorizontalCenterWithPanel="True" FontSize="24"/>
+            <ComboBox x:Name="comboBoxProjects" Margin="4" Width="{Binding ActualWidth, ElementName=panelProjectButtons, Mode=OneWay}" RelativePanel.Below="textOpenProject" RelativePanel.AlignHorizontalCenterWithPanel="True" FontSize="24"/>
+            <StackPanel x:Name="panelProjectButtons" Orientation="Horizontal" RelativePanel.Below="comboBoxProjects" RelativePanel.AlignHorizontalCenterWithPanel="True">
+                <Button x:Name="buttonOpenProject" Margin="4" Content="Open Project" Click="buttonOpenProject_Click" FontSize="24"/>
+                <Button x:Name="buttonDeleteProject" Margin="4" RelativePanel.RightOf="buttonOpenProject" Content="Delete Project" Click="buttonDeleteProject_Click" FontSize="24"/>
+            </StackPanel>
         </RelativePanel>
     </Grid>
 </Page>

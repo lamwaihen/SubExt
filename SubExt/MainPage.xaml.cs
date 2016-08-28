@@ -30,23 +30,24 @@ namespace SubExt
 
             foreach (StorageFolder folder in folders)
             {
-                Button buttonOpenProject = new Button
+                ComboBoxItem item = new ComboBoxItem
                 {
-                    Content = "Open " + folder.Name,
-                    DataContext = folder                 
+                    Content = folder.DisplayName,
+                    DataContext = folder
                 };
-                buttonOpenProject.Click += buttonOpenProjects_Click;
-                panelProjects.Children.Add(buttonOpenProject);
+                comboBoxProjects.Items.Add(item);
             }
+            comboBoxProjects.SelectedIndex = 0;
         }
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
 
         }
         
-        private async void buttonOpenProjects_Click(object sender, RoutedEventArgs e)
+        private async void buttonOpenProject_Click(object sender, RoutedEventArgs e)
         {
-            StorageFolder folder = (StorageFolder)((Button)sender).DataContext;
+            gridProgress.Visibility = Visibility.Visible;
+            StorageFolder folder = (StorageFolder)((ComboBoxItem)comboBoxProjects.SelectedItem).DataContext;
             p.Name = folder.Name;
             p.DisplayName = folder.Name.Substring(0, folder.Name.LastIndexOf("."));
             IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
@@ -73,7 +74,7 @@ namespace SubExt
                 frame.ImageSize = new Size(imgProps.Width, imgProps.Height);
                 p.VideoFrames.Add(frame);
             }
-
+            gridProgress.Visibility = Visibility.Collapsed;
             Frame.Navigate(typeof(SubtitlePage), p);
         }
 
@@ -90,6 +91,12 @@ namespace SubExt
                 p.DisplayName = p.Video.DisplayName;
                 Frame.Navigate(typeof(PreviewPage), p);
             }
+        }
+
+        private async void buttonDeleteProject_Click(object sender, RoutedEventArgs e)
+        {
+            StorageFolder folder = (StorageFolder)((ComboBoxItem)comboBoxProjects.SelectedItem).DataContext;
+            await folder.DeleteAsync(StorageDeleteOption.Default);
         }
     }
 }
