@@ -50,6 +50,7 @@ namespace SubExt
             StorageFolder folder = (StorageFolder)((ComboBoxItem)comboBoxProjects.SelectedItem).DataContext;
             p.Name = folder.Name;
             p.DisplayName = folder.Name.Substring(0, folder.Name.LastIndexOf("."));
+            p.ProjectFile = await folder.GetFileAsync(p.DisplayName + ".xml");
             IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
             string[] separators = new string[] { "-", ".bmp" };
             p.VideoFrames = new System.Collections.ObjectModel.ObservableCollection<VideoFrame>();

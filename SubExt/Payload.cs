@@ -12,6 +12,9 @@ using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.UI;
 using Windows.UI.Core;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using SubExt.Model;
 
 namespace SubExt.ViewModel
@@ -20,6 +23,7 @@ namespace SubExt.ViewModel
     {
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
         public ObservableCollection<VideoFrame> VideoFrames { get; set; }
+        public StorageFile ProjectFile { get; set; }
         public string Name { get; set; }
         public string DisplayName { get; set; }
         public StorageFile Video { get; set; }
@@ -113,6 +117,19 @@ namespace SubExt.ViewModel
         }
         private List<Color[]> _undoPixels = new List<Color[]>(5);
 
+        public List<UndoFrames> RedoFrames
+        {
+            get { return _redoFrames; }
+            set { _redoFrames = value;OnPropertyChanged(); }
+        }
+        private List<UndoFrames> _redoFrames = new List<UndoFrames>(5);
+        public List<UndoFrames> UndoFrames
+        {
+            get { return _undoFrames; }
+            set { _undoFrames = value; OnPropertyChanged(); }
+        }
+        private List<UndoFrames> _undoFrames = new List<UndoFrames>(5);
+
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChangedEventHandler eventHandler = PropertyChanged;
@@ -121,6 +138,28 @@ namespace SubExt.ViewModel
                 G.UIThreadExecute(() => { eventHandler(this, new PropertyChangedEventArgs(propertyName)); });
             }
         }
+    }
+
+    public class UndoFrames
+    {       
+        public List<VideoFrame> NewFrames
+        {
+            get { return _newFrames; }
+            set { _newFrames = value; }
+        }
+        private List<VideoFrame> _newFrames = new List<VideoFrame>(2);
+        public List<VideoFrame> OldFrames
+        {
+            get { return _oldFrames; }
+            set { _oldFrames = value; }
+        }
+        private List<VideoFrame> _oldFrames = new List<VideoFrame>(2);
+        public TimeSpan Time
+        {
+            get { return _time; }
+            set { _time = value; }
+        }
+        private TimeSpan _time;
     }
 
     public class G
@@ -137,6 +176,49 @@ namespace SubExt.ViewModel
                 action();
             else
                 await UIDispatcher.RunAsync(CoreDispatcherPriority.Normal, () => action());
+        }
+
+        static private List<FrameworkElement> AllChildren(DependencyObject parent)
+        {
+            var _List = new List<FrameworkElement>();
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var _Child = VisualTreeHelper.GetChild(parent, i);
+                if (_Child is FrameworkElement)
+                {
+                    _List.Add(_Child as FrameworkElement);
+                }
+                _List.AddRange(AllChildren(_Child));
+            }
+            return _List;
+        }
+
+        static public T FindControl<T>(DependencyObject parentContainer, string controlName)
+        {
+            var childControls = AllChildren(parentContainer);
+            var control = childControls.OfType<FrameworkElement>().Where(x => x.Name.Equals(controlName)).Cast<T>().First();
+            return control;
+        }
+
+        static public async Task SaveXml(StorageFile file, ObservableCollection<VideoFrame> frames)
+        {
+            if (true || file == null || frames == null)
+                return;
+
+            string folderPath = file.Path.Substring(0, file.Path.LastIndexOf("\\"));
+
+            await FileIO.WriteTextAsync(file, "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n", Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            await FileIO.AppendTextAsync(file, "<SubExt Folder=\"" + folderPath + "\">", Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            
+            string[] separators = new string[] { "-", ".bmp" };
+            foreach (VideoFrame frame in frames)
+            {
+                // Add to project 
+                string output = VideoFrame.SerializeToXML(frame);
+                await FileIO.AppendTextAsync(file, output, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            }
+            // Close project
+            await FileIO.AppendTextAsync(file, "</SubExt>", Windows.Storage.Streams.UnicodeEncoding.Utf8);
         }
     }
 }

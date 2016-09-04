@@ -392,6 +392,7 @@ namespace SubExt
             if (mediaProceed.CurrentState == Windows.UI.Xaml.Media.MediaElementState.Paused)
             {
                 StorageFolder folder = await ApplicationData.Current.TemporaryFolder.GetFolderAsync(p.Name);
+
                 IReadOnlyList<StorageFile> files = await folder.GetFilesAsync();
                 string[] separators = new string[] { "-", ".bmp" };
                 foreach (StorageFile file in files)
@@ -416,6 +417,9 @@ namespace SubExt
                     p.VideoFrames.Add(frame);
                     progressPostProcessing.Value++;
                 }
+                // Create XML project file
+                p.ProjectFile = await folder.CreateFileAsync(p.DisplayName + ".xml", CreationCollisionOption.ReplaceExisting);
+                await G.SaveXml(p.ProjectFile, p.VideoFrames);
 
                 Frame.Navigate(typeof(SubtitlePage), p);
             }

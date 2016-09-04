@@ -21,10 +21,15 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Grid x:Name="gridEdit" Grid.Row="0" Canvas.ZIndex="5" Background="#33000000">
+        <RelativePanel Grid.Row="0">
+            <Button x:Name="buttonFramesUndo" Content="Undo" Margin="8" Click="buttonFramesUndo_Click"/>
+            <Button x:Name="buttonFramesRedo" Content="Redo" Margin="8" Click="buttonFramesRedo_Click" RelativePanel.RightOf="buttonFramesUndo"/>
+        </RelativePanel>
+        <Grid x:Name="gridEdit" Grid.Row="1" Canvas.ZIndex="5" Background="#33000000">
             <StackPanel x:Name="panelEdit" Margin="40" Background="#FF80B3DA" BorderBrush="#FF206396" BorderThickness="2" CornerRadius="1">
                 <Button x:Name="buttonCloseSelctedImage" Content="X" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Click="buttonCloseSelctedImage_Click"/>
                 <StackPanel Orientation="Horizontal">
@@ -51,6 +56,12 @@
                             <Interactions:DataTriggerBehavior Binding="{x:Bind buttonPencilFill.IsChecked, Mode=OneWay}" Value="False">
                                 <Interactions:ChangePropertyAction PropertyName="IsEnabled" TargetObject="{x:Bind comboBoxPencilSize}" Value="False"/>
                             </Interactions:DataTriggerBehavior>
+                            <Interactions:DataTriggerBehavior Binding="{x:Bind buttonFloodFill.IsChecked, Mode=OneWay}" Value="True">
+                                <Interactions:ChangePropertyAction PropertyName="IsEnabled" TargetObject="{x:Bind comboBoxPencilSize}" Value="True"/>
+                            </Interactions:DataTriggerBehavior>
+                            <Interactions:DataTriggerBehavior Binding="{x:Bind buttonFloodFill.IsChecked, Mode=OneWay}" Value="False">
+                                <Interactions:ChangePropertyAction PropertyName="IsEnabled" TargetObject="{x:Bind comboBoxPencilSize}" Value="False"/>
+                            </Interactions:DataTriggerBehavior>
                         </Interactivity:Interaction.Behaviors>
                     </ComboBox>
                     <Button x:Name="buttonUndo" Content="Undo" Margin="8" Click="buttonUndo_Click"/>
@@ -75,7 +86,7 @@
                 </Grid>
             </StackPanel>
         </Grid>
-        <ListView x:Name="listSubtitles" Grid.Row="0" ItemsSource="{Binding}" SelectionMode="Single" SelectionChanged="listSubtitles_SelectionChanged">
+        <ListView x:Name="listSubtitles" Grid.Row="1" ItemsSource="{Binding}" SelectionMode="Single" SelectionChanged="listSubtitles_SelectionChanged">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid>
@@ -84,10 +95,14 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <RelativePanel Grid.Column="0">
-                            <TextBlock x:Name="textBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }}"/>
-                            <TextBlock x:Name="textBlockSep" Text=" --> " RelativePanel.RightOf="textBeginTime"/>
-                            <TextBlock x:Name="textEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }}" RelativePanel.RightOf="textBlockSep"/>
-                            <Grid BorderBrush="Black" BorderThickness="2" Margin="4" RelativePanel.Below="textBeginTime">
+                            <TextBlock x:Name="textBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }}" Tapped="textBeginTime_Tapped"/>
+                            <TextBox x:Name="textBoxBeginTime" Text="{Binding BeginTime, Converter={ StaticResource TimeSpanFormatter }, Mode=TwoWay}" Visibility="Collapsed"/>
+                            <Button x:Name="buttonBeginTimeOK" Content="V" Tapped="textBeginTime_Tapped" Visibility="Collapsed" RelativePanel.RightOf="textBoxBeginTime"/>
+                            <TextBlock x:Name="textBlockSep" Text=" --> " RelativePanel.RightOf="textBeginTime"/>                            
+                            <TextBlock x:Name="textEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }}" RelativePanel.RightOf="textBlockSep" Tapped="textEndTime_Tapped"/>
+                            <TextBox x:Name="textBoxEndTime" Text="{Binding EndTime, Converter={ StaticResource TimeSpanFormatter }, Mode=TwoWay}" Visibility="Collapsed" RelativePanel.RightOf="textBlockSep"/>
+                            <Button x:Name="buttonEndTimeOK" Content="V" Tapped="textEndTime_Tapped" Visibility="Collapsed" RelativePanel.RightOf="textBoxEndTime"/>
+                            <Grid BorderBrush="Black" BorderThickness="2" Margin="4" RelativePanel.Below="textBlockSep">
                                 <Image x:Name="imageSubtitle" Source="{Binding ImageFile, Converter={ StaticResource ImageSourceFormatter }}" DoubleTapped="imageSubtitle_DoubleTapped"/>
                             </Grid>
                         </RelativePanel>
@@ -96,14 +111,14 @@
                             <Button x:Name="buttonMergeUp" Content="Merge Up" Margin="4" Click="buttonMergeUp_Click" RelativePanel.RightOf="buttonInsert"/>
                             <Button x:Name="buttonMergeDown" Content="Merge Down" Margin="4" Click="buttonMergeDown_Click" RelativePanel.RightOf="buttonMergeUp"/>
                             <Button x:Name="buttonDelete" Content="Delete" Margin="4" Click="buttonDelete_Click" RelativePanel.RightOf="buttonMergeDown"/>
-                            <TextBox x:Name="textBoxSubtitle" Text="{Binding Subtitle, Mode=TwoWay}" RelativePanel.Below="buttonInsert" Margin="4" RelativePanel.AlignRightWith="buttonDelete" RelativePanel.AlignLeftWith="buttonInsert" VerticalAlignment="Top" RelativePanel.AlignBottomWithPanel="True" AcceptsReturn="True" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-                            
+                            <Button x:Name="buttonOCR" Content="OCR" Margin="4" Click="buttonOCR_Click" RelativePanel.Below="buttonInsert"/>
+                            <TextBox x:Name="textBoxSubtitle" Text="{Binding Subtitle, Mode=TwoWay}" RelativePanel.Below="buttonOCR" Margin="4" RelativePanel.AlignRightWith="buttonDelete" RelativePanel.AlignLeftWith="buttonInsert" VerticalAlignment="Top" RelativePanel.AlignBottomWithPanel="True" AcceptsReturn="True" ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="textBoxSubtitle_TextChanged" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
                         </RelativePanel>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
-        <RelativePanel Grid.Row="1">
+        <RelativePanel Grid.Row="2">
             <Button x:Name="buttonStartOcr" Content="Start OCR" Margin="4" Click="buttonStartOcr_Click"/>
             <Button x:Name="buttonSaveAsImg" Content="Save as Image" Margin="4" Click="buttonSaveAsImg_Click" RelativePanel.RightOf="buttonStartOcr"/>
             <Button x:Name="buttonSaveAsSrt" Content="Save as SRT" Margin="4" Click="buttonSaveAsSrt_Click" RelativePanel.RightOf="buttonSaveAsImg"/>

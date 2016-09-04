@@ -60,35 +60,49 @@ namespace SubExt
             return bChanged;
         }
 
-        public static bool FloodFill(Color[] pixels, int imgWidth, int imgHeight, Point pt, Color targetColor, Color replacementColor)
+        public static bool FloodFill(Color[] pixels, int imgWidth, int imgHeight, Point ptStart, int pencilSize, Color targetColor, Color replacementColor)
         {
             int nChanged = 0;
-            Queue<Point> q = new Queue<Point>();
-            pt.Y *= imgWidth;
-            q.Enqueue(pt);
-            while (q.Count > 0)
+            Point ptOffset = GetPencilOffset(pencilSize, ptStart);
+            bool[,] shape = GetPencilShape(pencilSize);
+
+            for (double j = ptOffset.Y; j < ptOffset.Y + pencilSize; j++)
             {
-                Point n = q.Dequeue();
-                if (!ColorMatch(GetPixel(pixels, n), targetColor))
-                    continue;
-                Point w = n, e = new Point(n.X + 1, n.Y);
-                while ((w.X >= 0) && ColorMatch(GetPixel(pixels, w), targetColor))
+                for (double i = ptOffset.X; i < ptOffset.X + pencilSize; i++)
                 {
-                    nChanged += SetPixel(pixels, w, replacementColor) ? 1 : 0;
-                    if ((w.Y > 0) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y - imgWidth)), targetColor))
-                        q.Enqueue(new Point(w.X, w.Y - imgWidth));
-                    if ((w.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y + imgWidth)), targetColor))
-                        q.Enqueue(new Point(w.X, w.Y + imgWidth));
-                    w.X--;
-                }
-                while ((e.X <= imgWidth - 1) && ColorMatch(GetPixel(pixels, e), targetColor))
-                {
-                    nChanged += SetPixel(pixels,e, replacementColor) ? 1 : 0;
-                    if ((e.Y > 0) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y - imgWidth)), targetColor))
-                        q.Enqueue(new Point(e.X, e.Y - imgWidth));
-                    if ((e.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y + imgWidth)), targetColor))
-                        q.Enqueue(new Point(e.X, e.Y + imgWidth));
-                    e.X++;
+                    Point pt = new Point(i, j);
+                    if (0 <= i && i < imgWidth && 0 <= j && j < imgHeight && shape[(int)(i - ptOffset.X), (int)(j - ptOffset.Y)])
+                    {
+                        int index = (int)(i + j * imgWidth);
+                        Queue<Point> q = new Queue<Point>();
+                        pt.Y *= imgWidth;
+                        q.Enqueue(pt);
+                        while (q.Count > 0)
+                        {
+                            Point n = q.Dequeue();
+                            if (!ColorMatch(GetPixel(pixels, n), targetColor))
+                                continue;
+                            Point w = n, e = new Point(n.X + 1, n.Y);
+                            while ((w.X >= 0) && ColorMatch(GetPixel(pixels, w), targetColor))
+                            {
+                                nChanged += SetPixel(pixels, w, replacementColor) ? 1 : 0;
+                                if ((w.Y > 0) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y - imgWidth)), targetColor))
+                                    q.Enqueue(new Point(w.X, w.Y - imgWidth));
+                                if ((w.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(w.X, w.Y + imgWidth)), targetColor))
+                                    q.Enqueue(new Point(w.X, w.Y + imgWidth));
+                                w.X--;
+                            }
+                            while ((e.X <= imgWidth - 1) && ColorMatch(GetPixel(pixels, e), targetColor))
+                            {
+                                nChanged += SetPixel(pixels, e, replacementColor) ? 1 : 0;
+                                if ((e.Y > 0) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y - imgWidth)), targetColor))
+                                    q.Enqueue(new Point(e.X, e.Y - imgWidth));
+                                if ((e.Y < imgHeight * imgWidth - 1) && ColorMatch(GetPixel(pixels, new Point(e.X, e.Y + imgWidth)), targetColor))
+                                    q.Enqueue(new Point(e.X, e.Y + imgWidth));
+                                e.X++;
+                            }
+                        }
+                    }
                 }
             }
             return nChanged > 0;

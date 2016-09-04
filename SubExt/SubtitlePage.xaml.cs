@@ -14,12 +14,14 @@ using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using Windows.Storage;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.System.Threading;
 using Windows.UI.Core;
 using Windows.UI.Input;
 using Windows.UI.Xaml;
@@ -47,12 +49,18 @@ namespace SubExt
         private CanvasControl canvasControlEdit;
         private Point ptCanvasStart;
         private Point m_ptRegionStart;
+        private OcrEngine m_ocrEngine;
+        private XmlReader m_xmlReader;
+        private ThreadPoolTimer m_saveXmlTimer;
+        private StorageFolder m_folder;
 
         public SubtitlePage()
         {
             this.InitializeComponent();
+
+            m_ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
         }
-        protected override void OnNavigatedTo(NavigationEventArgs e)
+        protected async override void OnNavigatedTo(NavigationEventArgs e)
         {
             p = e.Parameter as Payload;
             if (p?.VideoFrames != null)
@@ -60,10 +68,26 @@ namespace SubExt
                 listSubtitles.DataContext = p.VideoFrames;
                 listSubtitles.SelectedIndex = 0;
             }
+           
+            m_saveXmlTimer = ThreadPoolTimer.CreatePeriodicTimer(async (success) =>
+            {
+                System.Collections.ObjectModel.ObservableCollection<VideoFrame> frames = p.VideoFrames;
+                await G.SaveXml(p.ProjectFile, frames);
+            }, TimeSpan.FromMinutes(1));
+
+            m_folder = await p.VideoFrames[0]?.ImageFile.GetParentAsync();
         }
-        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        protected async override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            
+            m_saveXmlTimer.Cancel();
+            m_saveXmlTimer = null;
+
+            IReadOnlyList<StorageFile> files = await m_folder.GetFilesAsync();
+            foreach (var item in files)
+            {
+                if (item.Name.EndsWith(".tmp"))
+                    await item.DeleteAsync();
+            }
         }
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
@@ -103,10 +127,18 @@ namespace SubExt
             RelativePanel panel = item.Parent as RelativePanel;
             EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
-
             int curIdx = p.VideoFrames.IndexOf(frame);
             VideoFrame framePrev = p.VideoFrames[curIdx - 1];
+
+            // Add undo
+            StorageFolder folder = await frame.ImageFile.GetParentAsync();
+            VideoFrame undo1 = framePrev.GetCopy();
+            undo1.ImageFile = await framePrev.ImageFile.CopyAsync(folder, framePrev.ImageFile.DisplayName + ".tmp");
+            VideoFrame undo2 = frame.GetCopy();
+            undo2.ImageFile = await frame.ImageFile.CopyAsync(folder, frame.ImageFile.DisplayName + ".tmp");
+
             frame.BeginTime = framePrev.BeginTime;
+            frame.Subtitle = frame.UserEdited ? frame.Subtitle : framePrev.Subtitle;
             p.VideoFrames.Remove(framePrev);
 
             using (IRandomAccessStream stream1 = await framePrev.ImageFile.OpenAsync(FileAccessMode.Read))
@@ -130,6 +162,12 @@ namespace SubExt
             await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp");
             await framePrev.ImageFile.DeleteAsync();
 
+            UndoFrames undoFrames = new UndoFrames();
+            undoFrames.OldFrames = new List<VideoFrame> { undo1, undo2 };
+            undoFrames.NewFrames = new List<VideoFrame> { frame };
+            undoFrames.Time = undo1.BeginTime;
+            p.UndoFrames.Add(undoFrames);
+
             // Force to refresh UI
             frame.ImageFile = frame.ImageFile;
             EnableEditControls(panel, true);
@@ -141,10 +179,18 @@ namespace SubExt
             RelativePanel panel = item.Parent as RelativePanel;
             EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
-
             int curIdx = p.VideoFrames.IndexOf(frame);
             VideoFrame frameNext = p.VideoFrames[curIdx + 1];
+
+            // Add undo
+            StorageFolder folder = await frame.ImageFile.GetParentAsync();
+            VideoFrame undo1 = frame.GetCopy();
+            undo1.ImageFile = await frame.ImageFile.CopyAsync(folder, frame.ImageFile.DisplayName + ".tmp");
+            VideoFrame undo2 = frameNext.GetCopy();
+            undo2.ImageFile = await frameNext.ImageFile.CopyAsync(folder, frameNext.ImageFile.DisplayName + ".tmp");
+
             frame.EndTime = frameNext.EndTime;
+            frame.Subtitle = frame.UserEdited ? frame.Subtitle : frameNext.Subtitle;
             p.VideoFrames.Remove(frameNext);
 
             using (IRandomAccessStream stream1 = await frame.ImageFile.OpenAsync(FileAccessMode.ReadWrite))
@@ -164,9 +210,18 @@ namespace SubExt
                 bmp1.SetPixelColors(pixels1);
                 await bmp1.SaveAsync(stream1, CanvasBitmapFileFormat.Bmp);
             }
-
+            
             await frame.ImageFile.RenameAsync(((int)frame.BeginTime.TotalMilliseconds).ToString("D8") + "-" + ((int)frame.EndTime.TotalMilliseconds).ToString("D8") + ".bmp", NameCollisionOption.ReplaceExisting);
             await frameNext.ImageFile.DeleteAsync();
+            
+            if (p.UndoFrames.Count == 5)
+                p.UndoFrames.RemoveAt(0);
+
+            UndoFrames undoFrames = new UndoFrames();
+            undoFrames.OldFrames = new List<VideoFrame> { undo1, undo2 };
+            undoFrames.NewFrames = new List<VideoFrame> { frame };
+            undoFrames.Time = undo1.BeginTime;
+            p.UndoFrames.Add(undoFrames);
 
             // Force to refresh UI
             frame.ImageFile = frame.ImageFile;
@@ -179,16 +234,24 @@ namespace SubExt
             RelativePanel panel = item.Parent as RelativePanel;
             EnableEditControls(panel, false);
             VideoFrame frame = item.DataContext as VideoFrame;
+
+            // Add undo
+            VideoFrame undo = frame.GetCopy();
+            //string tempName = undo.ImageFile.DisplayName + ".tmp";
+            await undo.ImageFile.RenameAsync(undo.ImageFile.DisplayName + ".tmp");
+
+            if (p.UndoFrames.Count == 5)
+                p.UndoFrames.RemoveAt(0);
+
+            UndoFrames undoFrames = new UndoFrames();
+            undoFrames.OldFrames = new List<VideoFrame> { undo };
+            undoFrames.Time = undo.BeginTime;
+            p.UndoFrames.Add(undoFrames);
+
             p.VideoFrames.Remove(frame);
 
-            await frame.ImageFile.DeleteAsync();
+            //await frame.ImageFile.DeleteAsync();
             EnableEditControls(panel, true);
-
-            //foreach (VideoFrame frame in listSubtitles.SelectedItems)
-            //{
-            //    p.VideoFrames.Remove(frame);
-            //    await frame.ImageFile.DeleteAsync();
-            //}
         }
 
         private async void buttonSaveAsSrt_Click(object sender, RoutedEventArgs e)
@@ -236,23 +299,13 @@ namespace SubExt
 
         private async void buttonStartOcr_Click(object sender, RoutedEventArgs e)
         {
-            OcrEngine ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
-
             foreach (VideoFrame frame in p.VideoFrames)
             {
-                SoftwareBitmap softwareBitmap;
+                // Skip OCR if user edited manually.
+                if (frame.UserEdited)
+                    continue;
 
-                using (IRandomAccessStream stream = await frame.ImageFile.OpenAsync(FileAccessMode.Read))
-                {
-                    // Create the decoder from the stream
-                    BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-
-                    // Get the SoftwareBitmap representation of the file
-                    softwareBitmap = await decoder.GetSoftwareBitmapAsync();
-
-                    var ocrResult = await ocrEngine.RecognizeAsync(softwareBitmap);
-                    frame.Subtitle = ocrResult.Text.Replace(" ", "");
-                }
+                await OCRImage(frame);
             }
         }
 
@@ -393,7 +446,7 @@ namespace SubExt
 
         private void canvasControlEdit_PointerEntered(object sender, PointerRoutedEventArgs e)
         {
-            if (buttonPencilFill.IsChecked == true)
+            if (buttonPencilFill.IsChecked == true || buttonFloodFill.IsChecked == true)
             {
                 imagePencil.Visibility = Visibility.Visible;
             }
@@ -406,7 +459,29 @@ namespace SubExt
             pos.X += canvasControlEdit.Margin.Left;
             pos.Y += canvasControlEdit.Margin.Top;
 
-            if (buttonRectangleFill.IsChecked == true)
+            if (buttonFloodFill.IsChecked == true)
+            {
+                // Set position of overlay
+                int value = Convert.ToInt16((comboBoxPencilSize.SelectedValue as FrameworkElement).Tag);
+                Point pt = Helper.GetPencilOffset(value, pos);
+                Canvas.SetLeft(imagePencil, pt.X);
+                Canvas.SetTop(imagePencil, pt.Y);
+
+                // If button pressed, we will fill color
+                if (!ptrPt.Properties.IsLeftButtonPressed || imagePencil.Visibility == Visibility.Collapsed)
+                    return;
+
+                Point ptFill = ptCanvasStart = new Point((uint)(m_bitmapEdit.SizeInPixels.Width / canvasControlEdit.ActualWidth * ptrPt.Position.X), (uint)(m_bitmapEdit.SizeInPixels.Height / canvasControlEdit.ActualHeight * ptrPt.Position.Y));
+                Color[] pixels = m_bitmapEdit.GetPixelColors();
+
+                int size = Convert.ToInt16((comboBoxPencilSize.SelectedItem as FrameworkElement).Tag);
+                bool result = Helper.FloodFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptFill, size, Colors.Black, Colors.White);
+
+                Debug.WriteLine(string.Format("pt {0} size {1}", ptFill.ToString(), size));
+                m_bitmapEdit.SetPixelColors(pixels);
+                canvasControlEdit.Invalidate();
+            }
+            else if (buttonRectangleFill.IsChecked == true)
             {
                 if (!ptrPt.Properties.IsLeftButtonPressed || rectFill.Visibility == Visibility.Collapsed)
                     return;
@@ -505,7 +580,8 @@ namespace SubExt
                 Color[] pixels = m_bitmapEdit.GetPixelColors();
                 Color[] undo = (Color[])pixels.Clone();
 
-                if (Helper.FloodFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, Colors.Black, Colors.White))
+                int size = Convert.ToInt16((comboBoxPencilSize.SelectedItem as FrameworkElement).Tag);
+                if (Helper.FloodFill(pixels, (int)m_bitmapEdit.SizeInPixels.Width, (int)m_bitmapEdit.SizeInPixels.Height, ptCanvasStart, size, Colors.Black, Colors.White))
                 {
                     if (p.UndoPixels.Count == 5)
                         p.UndoPixels.RemoveAt(0);
@@ -571,6 +647,11 @@ namespace SubExt
             }
         }
 
+        private async void buttonOCR_Click(object sender, RoutedEventArgs e)
+        {
+            await OCRImage(((VideoFrame)((Button)sender).DataContext));
+        }
+
         private void buttonRedo_Click(object sender, RoutedEventArgs e)
         {
             if (p.RedoPixels.Count > 0)
@@ -612,7 +693,40 @@ namespace SubExt
         private void listSubtitles_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             VideoFrame f = listSubtitles.SelectedItem as VideoFrame;
-            p.SelectedImageFile = f?.ImageFile;            
+            p.SelectedImageFile = f?.ImageFile;
+        }
+
+        private void textBoxSubtitle_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // If text changed by data binding, both Data Context and UI will have same value.
+            // Otherwise UI will change first before apply back to data binding value.
+            VideoFrame frame = (VideoFrame)((TextBox)sender).DataContext;
+            if (frame == null)
+                return;
+
+            string dcText = frame.Subtitle;
+            string uiText = ((TextBox)sender).Text;
+
+            frame.UserEdited = dcText != uiText;
+
+
+        }
+
+        private async Task OCRImage(VideoFrame frame)
+        {
+            SoftwareBitmap softwareBitmap;
+
+            using (IRandomAccessStream stream = await frame.ImageFile.OpenAsync(FileAccessMode.Read))
+            {
+                // Create the decoder from the stream
+                BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+                // Get the SoftwareBitmap representation of the file
+                softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+                var ocrResult = await m_ocrEngine.RecognizeAsync(softwareBitmap);
+                frame.Subtitle = ocrResult.Text.Replace(" ", "");
+            }
         }
 
         private async Task<List<StorageFile>> SaveImagesAsync(StorageFolder folder)
@@ -685,6 +799,70 @@ namespace SubExt
 
             return files;
         }
+
+        private void textEndTime_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            TextBlock textEndTime = sender is TextBlock ? sender as TextBlock : G.FindControl<TextBlock>((sender as FrameworkElement).Parent, "textEndTime");
+            TextBox textBoxEndTime = G.FindControl<TextBox>((sender as FrameworkElement).Parent, "textBoxEndTime");
+            Button buttonEndTimeOK = sender is Button ? sender as Button : G.FindControl<Button>((sender as FrameworkElement).Parent, "buttonEndTimeOK");
+
+            textEndTime.Visibility = textEndTime.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            textBoxEndTime.Visibility = textBoxEndTime.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            buttonEndTimeOK.Visibility = textBoxEndTime.Visibility;
+        }
+
+        private void textBeginTime_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            TextBlock textBeginTime = sender is TextBlock ? sender as TextBlock : G.FindControl<TextBlock>((sender as FrameworkElement).Parent, "textBeginTime");
+            TextBox textBoxBeginTime = G.FindControl<TextBox>((sender as FrameworkElement).Parent, "textBoxBeginTime");
+            Button buttonBeginTimeOK = sender is Button ? sender as Button : G.FindControl<Button>((sender as FrameworkElement).Parent, "buttonBeginTimeOK");
+            TextBlock textBlockSep = G.FindControl<TextBlock>((sender as FrameworkElement).Parent, "textBlockSep");
+
+            textBeginTime.Visibility = textBeginTime.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            textBoxBeginTime.Visibility = textBoxBeginTime.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            buttonBeginTimeOK.Visibility = textBoxBeginTime.Visibility;
+            string rightOf = (string)textBlockSep.GetValue(RelativePanel.RightOfProperty);
+            textBlockSep.SetValue(RelativePanel.RightOfProperty, rightOf == "textBeginTime" ? "buttonBeginTimeOK" : "textBeginTime");
+        }
+
+        private async void buttonFramesUndo_Click(object sender, RoutedEventArgs e)
+        {
+            if (p.UndoFrames.Count > 0)
+            {
+                int lastIndex = p.UndoFrames.Count - 1;
+                for (int i = 0; i < p.VideoFrames.Count; i++)
+                {
+                    if (p.UndoFrames[lastIndex].Time <= p.VideoFrames[i].BeginTime)
+                    {
+                        foreach (var item in p.UndoFrames[lastIndex].NewFrames)
+                        {
+                            await item.ImageFile.DeleteAsync();
+                            p.VideoFrames.Remove(item);
+                        }
+
+                        int j = i;
+                        foreach (var item in p.UndoFrames[lastIndex].OldFrames)
+                        { 
+                            string newName = item.ImageFile.DisplayName + ".bmp";
+                            await item.ImageFile.RenameAsync(newName, NameCollisionOption.ReplaceExisting);
+                            p.VideoFrames.Insert(j, item);
+                            j++;
+                        }                       
+                        break;
+                    }
+                }
+
+                if (p.RedoFrames.Count == 5)
+                    p.RedoFrames.RemoveAt(0);
+                p.RedoFrames.Add(p.UndoFrames[lastIndex]);
+                p.UndoFrames.RemoveAt(lastIndex);
+            }
+        }
+
+        private void buttonFramesRedo_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 
     public class TimeSpanFormatter : IValueConverter
@@ -702,7 +880,9 @@ namespace SubExt
         public object ConvertBack(object value, Type targetType,
             object parameter, string language)
         {
-            throw new NotImplementedException();
+            TimeSpan ts;
+            TimeSpan.TryParseExact(value as string, @"hh\:mm\:ss\,fff", System.Globalization.CultureInfo.CurrentCulture, out ts);
+            return ts;
         }
     }
 
