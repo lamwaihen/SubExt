@@ -238,7 +238,7 @@ namespace SubExt
             // Add undo
             VideoFrame undo = frame.GetCopy();
             //string tempName = undo.ImageFile.DisplayName + ".tmp";
-            await undo.ImageFile.RenameAsync(undo.ImageFile.DisplayName + ".tmp");
+            await undo.ImageFile.RenameAsync(undo.ImageFile.DisplayName + ".tmp", NameCollisionOption.ReplaceExisting);
 
             if (p.UndoFrames.Count == 5)
                 p.UndoFrames.RemoveAt(0);

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Brushes;
@@ -144,7 +145,7 @@ namespace VideoEffects
             using (RgbToHueEffect rgbToHueEffect = new RgbToHueEffect { Source = posterizeEffect, OutputColorSpace = EffectHueColorSpace.Hsl })
             using (ColorMatrixEffect colorMatrixEffect = new ColorMatrixEffect { Source = rgbToHueEffect, ColorMatrix = desaturate })
             using (HueToRgbEffect hueToRgbEffect = new HueToRgbEffect { Source = colorMatrixEffect, SourceColorSpace = EffectHueColorSpace.Hsl })
-            using (BrightnessEffect brightnessEffect = new BrightnessEffect { Source = hueToRgbEffect, WhitePoint = new Vector2(0.1f, 1) })
+            using (BrightnessEffect brightnessEffect = new BrightnessEffect { Source = posterizeEffect, WhitePoint = new Vector2(0.1f, 1) })
             using (InvertEffect invertEffect = new InvertEffect { Source = brightnessEffect })
             using (CompositeEffect composite = new CompositeEffect { Sources = { invertEffect } })
             {
@@ -169,17 +170,46 @@ namespace VideoEffects
                     }
                 });
 
+                // Floodfill to clear the edges
+                Parallel.For(0, height, y =>
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        int index = x + width * y;
+                        curPixels[index].A = byte.MaxValue;
+                        if (curPixels[index] != Colors.Black)
+                            curPixels[index] = Colors.White;
+                    }
+                });
+
                 double whiteSim = CompareScaledFrames(curPixels, allWhitePixels, new Size(subtitleRect.Width, subtitleRect.Height));
                 if (whiteSim > 0.99)
                 {
                     prevPixels = allWhitePixels;
                     prevTime = (int)ts.TotalMilliseconds;
+
+                    // If there's reminding pixels, save it.
+                    if (savePixels != null)
+                    {
+                        Color[] pixels = null;
+                        string filename = saveFilename;
+                        pixels = new Color[savePixels.Length];
+                        savePixels.CopyTo(pixels, 0);
+                        savePixels = null;
+
+                        if (filename != string.Empty && pixels != null)
+                        {
+                            await Task.Run(() => SaveAndRenameFile(folder, pixels, filename));
+                        }
+                    }
                 }
                 else
                 {
                     double similarity = CompareScaledFrames(curPixels, prevPixels, new Size(subtitleRect.Width, subtitleRect.Height));
                     prevPixels = curPixels;
                     prevTime = (int)ts.TotalMilliseconds;
+
+                    Debug.WriteLine("Similarity " + similarity + " Time " + ((int)ts.TotalMilliseconds).ToString("D8"));
 
                     if (similarity > 0.99)
                     {
@@ -199,28 +229,26 @@ namespace VideoEffects
                     }
                     else
                     {
-                        //CanvasBitmap b = CanvasBitmap.CreateFromColors(canvasDevice, curScaledPx, (int)scaledRect.Width, (int)scaledRect.Height, 96);
-                        //b.SaveAsync(ApplicationData.Current.TemporaryFolder.Path + "\\S" + ((int)context.OutputFrame.RelativeTime.Value.TotalMilliseconds).ToString("D8") + "_" + ((int)(diff * 100)).ToString() + ".bmp", CanvasBitmapFileFormat.Bmp).Completed = new AsyncActionCompletedHandler((saveInfo, saveStatus) => { });
-
-                        string filename = saveFilename;
-
-                        Color[] pixels = null;
+                        // We have a new line, if we have pending pixels then we save that first.
                         if (savePixels != null)
                         {
+                            Color[] pixels = null;
+                            string filename = saveFilename;
                             pixels = new Color[savePixels.Length];
                             savePixels.CopyTo(pixels, 0);
+                            savePixels = null;
+
+                            if (filename != string.Empty && pixels != null)
+                            {
+                                await Task.Run(() => SaveAndRenameFile(folder, pixels, filename));
+                            }
                         }
 
                         saveFilename = ((int)ts.TotalMilliseconds).ToString("D8") + ".bmp";
                         savePixels = new Color[curPixels.Length];
                         curPixels.CopyTo(savePixels, 0);
-
-                        if (filename != string.Empty && pixels != null)
-                        {
-                            await Task.Run(() => SaveAndRenameFile(folder, pixels, filename));
-                        }
                     }
-                }
+                }                
 
                 OnFrameProceeded?.Invoke(ts);
             }
@@ -310,23 +338,24 @@ namespace VideoEffects
             if (img2 == null)
                 return 0;
 
-            double maxDiff = 0;
-            double sameCount = 0;
+            int sameCount = 0;
+            int blackCount = 0;
             int width = (int)size.Width;
             int height = (int)size.Height;
-            for (int y = 0; y < height; y++)
+
+            Parallel.For(0, height, y =>
             {
                 for (int x = 0; x < width; x++)
                 {
-                    double diff = (double)Math.Abs(img1[(int)(x + width * y)].R - img2[(int)(x + width * y)].R) / 256;
-                    maxDiff = Math.Max(maxDiff, diff);
+                    if (img1[x + width * y].R == 0xFF)
+                        Interlocked.Add(ref blackCount, 1);
 
-                    if (img1[(int)(x + width * y)].R == img2[(int)(x + width * y)].R)
-                        sameCount++;
+                    if (img1[x + width * y] == img2[x + width * y])
+                        Interlocked.Add(ref sameCount, 1);
                 }
-            }                    
+            });
 
-            return sameCount / img1.Length;
+            return (double)sameCount / (width * height);
         }
 
         private static void FloodFill(Color[] pixels, int width, int height, Point pt, Color targetColor, Color replacementColor)
@@ -342,7 +371,7 @@ namespace VideoEffects
                 while ((w.X >= 0) && GetPixel(pixels, width, w.X, w.Y) != replacementColor)
                 {
                     pixels[(int)(w.X + width * w.Y)] = replacementColor;
-                    
+
                     if ((w.Y > 0) && GetPixel(pixels, width, w.X, w.Y - 1) != replacementColor)
                         q.Enqueue(new Point(w.X, w.Y - 1));
                     if ((w.Y < height - 1) && GetPixel(pixels, width, w.X, w.Y + 1) != replacementColor)

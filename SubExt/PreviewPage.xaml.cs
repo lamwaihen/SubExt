@@ -397,7 +397,7 @@ namespace SubExt
                 string[] separators = new string[] { "-", ".bmp" };
                 foreach (StorageFile file in files)
                 {
-                    if (!char.IsDigit(file.Name, 0))
+                    if (file.FileType != ".bmp")
                         continue;
 
                     string[] timestamps = file.Name.Split(separators, StringSplitOptions.RemoveEmptyEntries);
