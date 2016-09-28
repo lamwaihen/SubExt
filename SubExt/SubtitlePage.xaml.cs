@@ -185,9 +185,9 @@ namespace SubExt
             // Add undo
             StorageFolder folder = await frame.ImageFile.GetParentAsync();
             VideoFrame undo1 = frame.GetCopy();
-            undo1.ImageFile = await frame.ImageFile.CopyAsync(folder, frame.ImageFile.DisplayName + ".tmp");
+            undo1.ImageFile = await frame.ImageFile.CopyAsync(folder, frame.ImageFile.DisplayName + ".tmp", NameCollisionOption.ReplaceExisting);
             VideoFrame undo2 = frameNext.GetCopy();
-            undo2.ImageFile = await frameNext.ImageFile.CopyAsync(folder, frameNext.ImageFile.DisplayName + ".tmp");
+            undo2.ImageFile = await frameNext.ImageFile.CopyAsync(folder, frameNext.ImageFile.DisplayName + ".tmp", NameCollisionOption.ReplaceExisting);
 
             frame.EndTime = frameNext.EndTime;
             frame.Subtitle = frame.UserEdited ? frame.Subtitle : frameNext.Subtitle;
